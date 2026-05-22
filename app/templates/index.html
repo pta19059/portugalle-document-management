@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Portugalle Document Management</title>
+  <title>{{ t.app_title if t.app_title is defined else 'Portugalle Document Management' }}</title>
   <link rel="stylesheet" href="/static/style.css?v=20260522futuristic" />
 </head>
 <body>
@@ -14,20 +14,24 @@
     <header class="hero">
       <div class="hero-row">
         <div>
-          <p class="eyebrow">Local AI Workflow</p>
+          <p class="eyebrow">{{ t.hero_eyebrow }}</p>
           <h1>Portugalle Document Management</h1>
-          <p>Pipeline locale per import e traduzione PT->EN/IT con Azure Document Translator (sync + PDF batch via Blob).</p>
+          <p>{{ t.hero_subtitle }}</p>
         </div>
         <div class="hero-kpis" aria-hidden="true">
-          <div class="kpi"><span>{{ incoming|length }}</span><small>in coda</small></div>
-          <div class="kpi"><span>{{ processed|length }}</span><small>output</small></div>
+          <div class="kpi"><span>{{ incoming|length }}</span><small>{{ t.kpi_queue }}</small></div>
+          <div class="kpi"><span>{{ processed|length }}</span><small>{{ t.kpi_output }}</small></div>
         </div>
       </div>
     </header>
 
     <nav class="tab-nav" aria-label="Navigazione sezione">
-      <a href="/?tab=workflow" class="tab-link{% if active_tab != 'settings' %} tab-link-active{% endif %}">Workflow</a>
-      <a href="/?tab=settings" class="tab-link{% if active_tab == 'settings' %} tab-link-active{% endif %}">Settings</a>
+      <a href="/?tab=workflow{% if lang_code != 'it' %}&lang={{ lang_code }}{% endif %}" class="tab-link{% if active_tab != 'settings' %} tab-link-active{% endif %}">{{ t.tab_workflow }}</a>
+      <a href="/?tab=settings{% if lang_code != 'it' %}&lang={{ lang_code }}{% endif %}" class="tab-link{% if active_tab == 'settings' %} tab-link-active{% endif %}">{{ t.tab_settings }}</a>
+      <span class="tab-lang">{{ t.lang_label }}:
+        <a href="/?tab={{ active_tab }}&lang=it" class="tab-link{% if lang_code == 'it' %} tab-link-active{% endif %}">IT</a>
+        <a href="/?tab={{ active_tab }}&lang=en" class="tab-link{% if lang_code == 'en' %} tab-link-active{% endif %}">EN</a>
+      </span>
     </nav>
 
     {% if message %}
@@ -40,42 +44,39 @@
 
     <section class="panel panel-soft reveal-1 help-panel{% if active_tab == 'settings' %} tab-hidden{% endif %}">
       <details class="help-card" open>
-        <summary>Aiuto rapido: come funziona l'app</summary>
+        <summary>{{ t.help_summary }}</summary>
         <div class="help-content">
-          <p>
-            L'app gira in locale e usa un unico motore cloud: <strong>Azure Document Translator</strong>
-            in modalita sincrona con upload diretto del file (senza Blob Storage).
-          </p>
+          <p>{{ t.help_intro }}</p>
           <ul>
-            <li><strong>Motore unico:</strong> Azure Document Translator per i formati supportati in modalita sync.</li>
-            <li><strong>Nessun Blob richiesto:</strong> il file viene inviato direttamente all'endpoint sync.</li>
-            <li><strong>PDF con Azure:</strong> disponibili via modalita batch usando Azure Blob Storage.</li>
-            <li><strong>Lingue principali:</strong> sorgente PT, target EN/IT.</li>
-            <li><strong>Output:</strong> file tradotti in <code>data/processed/&lt;data_ora&gt;/&lt;documento&gt;/</code>.</li>
-            <li><strong>OneDrive:</strong> import da cartella locale gia sincronizzata, senza App Registration.</li>
+            <li><strong>{{ t.help_engine }}</strong> {{ t.help_engine_desc }}</li>
+            <li><strong>{{ t.help_no_blob }}</strong> {{ t.help_no_blob_desc }}</li>
+            <li><strong>{{ t.help_pdf }}</strong> {{ t.help_pdf_desc }}</li>
+            <li><strong>{{ t.help_languages }}</strong> {{ t.help_languages_desc }}</li>
+            <li><strong>{{ t.help_output }}</strong> {{ t.help_output_desc }} <code>data/processed/&lt;data_ora&gt;/&lt;documento&gt;/</code>.</li>
+            <li><strong>{{ t.help_onedrive }}</strong> {{ t.help_onedrive_desc }}</li>
           </ul>
-          <p class="hint">
-            Configura <code>AZURE_TRANSLATOR_ENDPOINT</code> e <code>AZURE_TRANSLATOR_KEY</code>. Per PDF configura anche Blob nella tab Settings.
-          </p>
+          <p class="hint">{{ t.help_hint }}</p>
         </div>
       </details>
     </section>
 
     <section class="panel panel-soft reveal-1{% if active_tab == 'settings' %} tab-hidden{% endif %}">
-      <h2>1) Carica Documenti Locali</h2>
+      <h2>{{ t.sec_upload_title }}</h2>
       <form action="/upload-local" method="post" enctype="multipart/form-data">
-        <label>Seleziona uno o piu file
+        <input type="hidden" name="lang" value="{{ lang_code }}" />
+        <label>{{ t.upload_label }}
           <input type="file" name="files" multiple required />
         </label>
-        <button type="submit">Carica</button>
+        <button type="submit">{{ t.upload_button }}</button>
       </form>
     </section>
 
     <section class="panel panel-soft reveal-2{% if active_tab == 'settings' %} tab-hidden{% endif %}">
-      <h2>2) Import da OneDrive (cartella locale sincronizzata)</h2>
+      <h2>{{ t.sec_onedrive_title }}</h2>
       <form action="/import-onedrive" method="post">
+        <input type="hidden" name="lang" value="{{ lang_code }}" />
         {% if onedrive_roots %}
-          <label>Radici OneDrive rilevate sul PC
+          <label>{{ t.onedrive_roots }}
             <div class="list">
               {% for root in onedrive_roots %}
                 <div class="output-row">{{ root }}</div>
@@ -85,9 +86,9 @@
         {% endif %}
 
         {% if onedrive_folders %}
-          <label>Seleziona cartella OneDrive sincronizzata
+          <label>{{ t.onedrive_select }}
             <select id="onedrive-folder-select">
-              <option value="">-- seleziona una cartella --</option>
+              <option value="">{{ t.onedrive_select_placeholder }}</option>
               {% for folder in onedrive_folders %}
                 <option value="{{ folder }}">{{ folder }}</option>
               {% endfor %}
@@ -95,32 +96,33 @@
           </label>
         {% endif %}
 
-        <label>Path cartella OneDrive (es. Documenti/Contratti)
-          <input type="text" id="onedrive-folder-path" name="folder_path" value="" placeholder="C:/Users/<utente>/OneDrive/Documenti/Contratti" required />
+        <label>{{ t.onedrive_path }}
+          <input type="text" id="onedrive-folder-path" name="folder_path" value="" placeholder="{{ t.onedrive_path_placeholder }}" required />
         </label>
         <label class="inline recursive-option">
           <span class="checkbox-row">
             <input type="checkbox" name="recursive" value="true" />
-            Import ricorsivo (sottocartelle)
+            {{ t.onedrive_recursive }}
           </span>
-          <span class="hint">Se attivo, importa anche i file presenti nelle sottocartelle della cartella selezionata.</span>
+          <span class="hint">{{ t.onedrive_recursive_desc }}</span>
         </label>
-        <button type="submit" id="onedrive-import-submit" disabled>Importa cartella selezionata</button>
+        <button type="submit" id="onedrive-import-submit" disabled>{{ t.onedrive_import }}</button>
       </form>
       {% if not onedrive_folders %}
-        <p class="hint">Nessuna cartella OneDrive rilevata automaticamente. Inserisci il path manualmente.</p>
+        <p class="hint">{{ t.onedrive_none }}</p>
       {% endif %}
     </section>
 
     <section class="panel panel-strong reveal-3{% if active_tab == 'settings' %} tab-hidden{% endif %}">
-      <h2>3) Traduce PT -> EN/IT</h2>
+      <h2>{{ t.sec_translate_title }}</h2>
       <form action="/process" method="post" id="process-form">
-        <label>Lingua sorgente
+        <input type="hidden" name="lang" value="{{ lang_code }}" />
+        <label>{{ t.source_lang }}
           <input type="text" name="source_lang" value="pt" />
         </label>
 
         <fieldset>
-          <legend>File in coda</legend>
+          <legend>{{ t.queue_files }}</legend>
           {% if incoming %}
             <div class="grid files">
               {% for file in incoming %}
@@ -131,22 +133,22 @@
               {% endfor %}
             </div>
           {% else %}
-            <p>Nessun file presente in data/incoming.</p>
+            <p>{{ t.queue_empty }}</p>
           {% endif %}
         </fieldset>
 
         <fieldset>
-          <legend>Lingue target</legend>
+          <legend>{{ t.target_langs }}</legend>
           <div class="targets">
             <label class="checkbox-row chip"><input type="checkbox" name="target_langs" value="en" checked /> English</label>
             <label class="checkbox-row chip"><input type="checkbox" name="target_langs" value="it" checked /> Italiano</label>
           </div>
         </fieldset>
 
-        <button type="submit" class="cta" id="process-submit" data-label="Avvia traduzione">Avvia traduzione</button>
+        <button type="submit" class="cta" id="process-submit" data-label="{{ t.start_translate }}">{{ t.start_translate }}</button>
 
         <div id="process-status" class="process-status" hidden>
-          <p>Elaborazione in corso, attendi...</p>
+          <p>{{ t.processing }}</p>
           <div class="progress-track" role="progressbar" aria-label="Stato elaborazione documenti" aria-valuemin="0" aria-valuemax="100">
             <div class="progress-bar"></div>
           </div>
@@ -155,7 +157,7 @@
     </section>
 
     <section class="panel panel-soft reveal-4{% if active_tab == 'settings' %} tab-hidden{% endif %}">
-      <h2>File Processati</h2>
+      <h2>{{ t.processed_files }}</h2>
       {% if processed %}
         <div class="list">
           {% for file in processed %}
@@ -163,78 +165,77 @@
           {% endfor %}
         </div>
       {% else %}
-        <p>Nessun output ancora generato.</p>
+        <p>{{ t.no_output }}</p>
       {% endif %}
     </section>
 
     <section class="panel panel-soft reveal-2{% if active_tab != 'settings' %} tab-hidden{% endif %}">
-      <h2>Settings - Azure Document Translator</h2>
+      <h2>{{ t.settings_title }}</h2>
       <p class="hint">
-        Configura endpoint e credenziali per la traduzione documenti.
+        {{ t.settings_hint }}
         {% if settings_locked %}
-          Modalita bloccata attiva: modifica via UI disabilitata.
+          {{ t.settings_locked }}
         {% endif %}
       </p>
 
       <div class="settings-meta">
-        <div class="output-row">Stato configurazione attiva: {% if translator_settings.is_effective_configured %}completa{% else %}incompleta{% endif %}</div>
-        <div class="output-row">Stato Blob per PDF batch: {% if translator_settings.is_blob_configured %}completo{% else %}incompleto{% endif %}</div>
-        <div class="output-row">Sorgente configurazione attiva: {{ translator_settings.effective_source }}</div>
+        <div class="output-row">{{ t.settings_state }} {% if translator_settings.is_effective_configured %}{{ t.complete }}{% else %}{{ t.incomplete }}{% endif %}</div>
+        <div class="output-row">{{ t.settings_blob_state }} {% if translator_settings.is_blob_configured %}{{ t.blob_complete }}{% else %}{{ t.blob_incomplete }}{% endif %}</div>
+        <div class="output-row">{{ t.settings_source }} {{ translator_settings.effective_source }}</div>
         {% if translator_settings.has_key %}
-          <div class="output-row">Key salvata (masked): {{ translator_settings.masked_key }}</div>
+          <div class="output-row">{{ t.key_saved }} {{ translator_settings.masked_key }}</div>
         {% endif %}
         {% if translator_settings.masked_blob_connection_string %}
-          <div class="output-row">Blob connection string (masked): {{ translator_settings.masked_blob_connection_string }}</div>
+          <div class="output-row">{{ t.blob_saved }} {{ translator_settings.masked_blob_connection_string }}</div>
         {% endif %}
       </div>
 
       <form action="/settings/translator" method="post">
-        <label>Azure Translator Endpoint
-          <input type="text" name="endpoint" placeholder="https://<resource-name>.cognitiveservices.azure.com" value="{{ translator_settings.endpoint }}" {% if settings_locked %}disabled{% endif %} required />
+        <input type="hidden" name="lang" value="{{ lang_code }}" />
+        <label>{{ t.endpoint }}
+          <input type="text" name="endpoint" placeholder="{{ t.endpoint_placeholder }}" value="{{ translator_settings.endpoint }}" {% if settings_locked %}disabled{% endif %} required />
         </label>
 
-        <label>Azure Translator Key
-          <input type="password" name="key" placeholder="Lascia vuoto per mantenere la key gia salvata" {% if settings_locked %}disabled{% endif %} />
+        <label>{{ t.key }}
+          <input type="password" name="key" placeholder="{{ t.key_placeholder }}" {% if settings_locked %}disabled{% endif %} />
         </label>
 
-        <label>API Version
+        <label>{{ t.api_version }}
           <input type="text" name="api_version" value="{{ translator_settings.api_version }}" {% if settings_locked %}disabled{% endif %} required />
         </label>
 
-        <label>Timeout (secondi)
+        <label>{{ t.timeout }}
           <input type="number" name="timeout_sec" min="30" max="3600" value="{{ translator_settings.timeout_sec }}" {% if settings_locked %}disabled{% endif %} required />
         </label>
 
-        <label>Blob Connection String (per PDF batch)
-          <input type="password" name="blob_connection_string" placeholder="DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net" {% if settings_locked %}disabled{% endif %} />
+        <label>{{ t.blob_conn }}
+          <input type="password" name="blob_connection_string" placeholder="{{ t.blob_conn_placeholder }}" {% if settings_locked %}disabled{% endif %} />
         </label>
 
-        <label>Blob Source Container (per PDF batch)
+        <label>{{ t.blob_source }}
           <input type="text" name="blob_source_container" placeholder="translator-source" value="{{ translator_settings.blob_source_container }}" {% if settings_locked %}disabled{% endif %} />
         </label>
 
-        <label>Blob Target Container (per PDF batch)
+        <label>{{ t.blob_target }}
           <input type="text" name="blob_target_container" placeholder="translator-target" value="{{ translator_settings.blob_target_container }}" {% if settings_locked %}disabled{% endif %} />
         </label>
 
-        <label>Batch API Version (per PDF)
+        <label>{{ t.batch_api }}
           <input type="text" name="batch_api_version" value="{{ translator_settings.batch_api_version }}" {% if settings_locked %}disabled{% endif %} required />
         </label>
 
-        <label>Batch Timeout (secondi)
+        <label>{{ t.batch_timeout }}
           <input type="number" name="batch_timeout_sec" min="60" max="7200" value="{{ translator_settings.batch_timeout_sec }}" {% if settings_locked %}disabled{% endif %} required />
         </label>
 
-        <label>Batch Poll Interval (secondi)
+        <label>{{ t.batch_poll }}
           <input type="number" name="batch_poll_sec" min="2" max="60" value="{{ translator_settings.batch_poll_sec }}" {% if settings_locked %}disabled{% endif %} required />
         </label>
 
-        <button type="submit" {% if settings_locked %}disabled{% endif %}>Salva impostazioni</button>
+        <button type="submit" {% if settings_locked %}disabled{% endif %}>{{ t.save_settings }}</button>
       </form>
 
-      <p class="hint">
-        Se l'app verra resa pubblica, imposta <code>LOCK_TRANSLATOR_SETTINGS=1</code> e usa solo variabili ambiente lato server.
-      </p>
+      <p class="hint">{{ t.public_hint }}</p>
     </section>
   </main>
 
@@ -275,7 +276,17 @@
         return;
       }
       const tab = params.get('tab');
-      const cleanUrl = tab ? `${window.location.pathname}?tab=${encodeURIComponent(tab)}` : window.location.pathname;
+      const lang = params.get('lang');
+      const cleanParams = new URLSearchParams();
+      if (tab) {
+        cleanParams.set('tab', tab);
+      }
+      if (lang) {
+        cleanParams.set('lang', lang);
+      }
+      const cleanUrl = cleanParams.toString()
+        ? `${window.location.pathname}?${cleanParams.toString()}`
+        : window.location.pathname;
       window.history.replaceState({}, '', cleanUrl);
     })();
 
@@ -294,7 +305,7 @@
       }
       if (submitButton) {
         submitButton.disabled = false;
-        submitButton.textContent = submitButton.getAttribute('data-label') || 'Avvia traduzione';
+        submitButton.textContent = submitButton.getAttribute('data-label') || 'Start translation';
       }
 
       processForm.addEventListener('submit', () => {

@@ -40,6 +40,156 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), na
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
 
+UI_TEXTS = {
+    "it": {
+        "hero_eyebrow": "Local AI Workflow",
+        "hero_subtitle": "Pipeline locale per import e traduzione PT->EN/IT con Azure Document Translator (sync + PDF batch via Blob).",
+        "tab_workflow": "Workflow",
+        "tab_settings": "Settings",
+        "help_summary": "Aiuto rapido: come funziona l'app",
+        "help_intro": "L'app gira in locale e usa un unico motore cloud: Azure Document Translator in modalita sincrona con upload diretto del file (senza Blob Storage).",
+        "help_engine": "Motore unico:",
+        "help_engine_desc": "Azure Document Translator per i formati supportati in modalita sync.",
+        "help_no_blob": "Nessun Blob richiesto:",
+        "help_no_blob_desc": "il file viene inviato direttamente all'endpoint sync.",
+        "help_pdf": "PDF con Azure:",
+        "help_pdf_desc": "disponibili via modalita batch usando Azure Blob Storage.",
+        "help_languages": "Lingue principali:",
+        "help_languages_desc": "sorgente PT, target EN/IT.",
+        "help_output": "Output:",
+        "help_output_desc": "file tradotti in",
+        "help_onedrive": "OneDrive:",
+        "help_onedrive_desc": "import da cartella locale gia sincronizzata, senza App Registration.",
+        "help_hint": "Configura AZURE_TRANSLATOR_ENDPOINT e AZURE_TRANSLATOR_KEY. Per PDF configura anche Blob nella tab Settings.",
+        "sec_upload_title": "1) Carica Documenti Locali",
+        "upload_label": "Seleziona uno o piu file",
+        "upload_button": "Carica",
+        "sec_onedrive_title": "2) Import da OneDrive (cartella locale sincronizzata)",
+        "onedrive_roots": "Radici OneDrive rilevate sul PC",
+        "onedrive_select": "Seleziona cartella OneDrive sincronizzata",
+        "onedrive_select_placeholder": "-- seleziona una cartella --",
+        "onedrive_path": "Path cartella OneDrive (es. Documenti/Contratti)",
+        "onedrive_path_placeholder": "C:/Users/<utente>/OneDrive/Documenti/Contratti",
+        "onedrive_recursive": "Import ricorsivo (sottocartelle)",
+        "onedrive_recursive_desc": "Se attivo, importa anche i file presenti nelle sottocartelle della cartella selezionata.",
+        "onedrive_import": "Importa cartella selezionata",
+        "onedrive_none": "Nessuna cartella OneDrive rilevata automaticamente. Inserisci il path manualmente.",
+        "sec_translate_title": "3) Traduce PT -> EN/IT",
+        "source_lang": "Lingua sorgente",
+        "queue_files": "File in coda",
+        "queue_empty": "Nessun file presente in data/incoming.",
+        "target_langs": "Lingue target",
+        "start_translate": "Avvia traduzione",
+        "processing": "Elaborazione in corso, attendi...",
+        "processed_files": "File Processati",
+        "no_output": "Nessun output ancora generato.",
+        "settings_title": "Settings - Azure Document Translator",
+        "settings_hint": "Configura endpoint e credenziali per la traduzione documenti.",
+        "settings_locked": "Modalita bloccata attiva: modifica via UI disabilitata.",
+        "settings_state": "Stato configurazione attiva:",
+        "settings_blob_state": "Stato Blob per PDF batch:",
+        "settings_source": "Sorgente configurazione attiva:",
+        "complete": "completa",
+        "incomplete": "incompleta",
+        "blob_complete": "completo",
+        "blob_incomplete": "incompleto",
+        "key_saved": "Key salvata (masked):",
+        "blob_saved": "Blob connection string (masked):",
+        "endpoint": "Azure Translator Endpoint",
+        "endpoint_placeholder": "https://<resource-name>.cognitiveservices.azure.com",
+        "key": "Azure Translator Key",
+        "key_placeholder": "Lascia vuoto per mantenere la key gia salvata",
+        "api_version": "API Version",
+        "timeout": "Timeout (secondi)",
+        "blob_conn": "Blob Connection String (per PDF batch)",
+        "blob_conn_placeholder": "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net",
+        "blob_source": "Blob Source Container (per PDF batch)",
+        "blob_target": "Blob Target Container (per PDF batch)",
+        "batch_api": "Batch API Version (per PDF)",
+        "batch_timeout": "Batch Timeout (secondi)",
+        "batch_poll": "Batch Poll Interval (secondi)",
+        "save_settings": "Salva impostazioni",
+        "public_hint": "Se l'app verra resa pubblica, imposta LOCK_TRANSLATOR_SETTINGS=1 e usa solo variabili ambiente lato server.",
+        "lang_label": "Lingua",
+        "kpi_queue": "in coda",
+        "kpi_output": "output",
+    },
+    "en": {
+        "hero_eyebrow": "Local AI Workflow",
+        "hero_subtitle": "Local pipeline for PT->EN/IT import and translation with Azure Document Translator (sync + PDF batch via Blob).",
+        "tab_workflow": "Workflow",
+        "tab_settings": "Settings",
+        "help_summary": "Quick help: how the app works",
+        "help_intro": "The app runs locally and uses one cloud engine: Azure Document Translator in synchronous mode with direct file upload (without Blob Storage).",
+        "help_engine": "Single engine:",
+        "help_engine_desc": "Azure Document Translator for supported sync formats.",
+        "help_no_blob": "No Blob required:",
+        "help_no_blob_desc": "the file is sent directly to the sync endpoint.",
+        "help_pdf": "PDF with Azure:",
+        "help_pdf_desc": "available through batch mode using Azure Blob Storage.",
+        "help_languages": "Main languages:",
+        "help_languages_desc": "source PT, target EN/IT.",
+        "help_output": "Output:",
+        "help_output_desc": "translated files in",
+        "help_onedrive": "OneDrive:",
+        "help_onedrive_desc": "import from a local synced folder, no App Registration required.",
+        "help_hint": "Configure AZURE_TRANSLATOR_ENDPOINT and AZURE_TRANSLATOR_KEY. For PDFs configure Blob as well in the Settings tab.",
+        "sec_upload_title": "1) Upload Local Documents",
+        "upload_label": "Select one or more files",
+        "upload_button": "Upload",
+        "sec_onedrive_title": "2) Import from OneDrive (local synced folder)",
+        "onedrive_roots": "OneDrive roots detected on this PC",
+        "onedrive_select": "Select synced OneDrive folder",
+        "onedrive_select_placeholder": "-- select a folder --",
+        "onedrive_path": "OneDrive folder path (example: Documents/Contracts)",
+        "onedrive_path_placeholder": "C:/Users/<user>/OneDrive/Documents/Contracts",
+        "onedrive_recursive": "Recursive import (subfolders)",
+        "onedrive_recursive_desc": "If enabled, files from subfolders of the selected folder are imported too.",
+        "onedrive_import": "Import selected folder",
+        "onedrive_none": "No OneDrive folder was detected automatically. Enter the path manually.",
+        "sec_translate_title": "3) Translate PT -> EN/IT",
+        "source_lang": "Source language",
+        "queue_files": "Queued files",
+        "queue_empty": "No files found in data/incoming.",
+        "target_langs": "Target languages",
+        "start_translate": "Start translation",
+        "processing": "Processing, please wait...",
+        "processed_files": "Processed files",
+        "no_output": "No output generated yet.",
+        "settings_title": "Settings - Azure Document Translator",
+        "settings_hint": "Configure endpoint and credentials for document translation.",
+        "settings_locked": "Locked mode is active: UI changes are disabled.",
+        "settings_state": "Active configuration state:",
+        "settings_blob_state": "Blob state for PDF batch:",
+        "settings_source": "Active configuration source:",
+        "complete": "complete",
+        "incomplete": "incomplete",
+        "blob_complete": "complete",
+        "blob_incomplete": "incomplete",
+        "key_saved": "Saved key (masked):",
+        "blob_saved": "Blob connection string (masked):",
+        "endpoint": "Azure Translator Endpoint",
+        "endpoint_placeholder": "https://<resource-name>.cognitiveservices.azure.com",
+        "key": "Azure Translator Key",
+        "key_placeholder": "Leave empty to keep the currently saved key",
+        "api_version": "API Version",
+        "timeout": "Timeout (seconds)",
+        "blob_conn": "Blob Connection String (for PDF batch)",
+        "blob_conn_placeholder": "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net",
+        "blob_source": "Blob Source Container (for PDF batch)",
+        "blob_target": "Blob Target Container (for PDF batch)",
+        "batch_api": "Batch API Version (for PDF)",
+        "batch_timeout": "Batch Timeout (seconds)",
+        "batch_poll": "Batch Poll Interval (seconds)",
+        "save_settings": "Save settings",
+        "public_hint": "If this app becomes public, set LOCK_TRANSLATOR_SETTINGS=1 and use only server-side environment variables.",
+        "lang_label": "Language",
+        "kpi_queue": "queued",
+        "kpi_output": "output",
+    },
+}
+
+
 def _list_incoming() -> list[Path]:
     return sorted([p for p in INCOMING_DIR.rglob("*") if p.is_file()], key=lambda p: p.name.lower())
 
@@ -64,11 +214,26 @@ def _normalize_tab(tab: str | None) -> str:
     return "workflow"
 
 
-def _redirect_home(message: str | None = None, error: str | None = None, tab: str | None = None) -> RedirectResponse:
+def _normalize_lang(lang: str | None) -> str:
+    value = (lang or "").strip().lower()
+    if value in UI_TEXTS:
+        return value
+    return "it"
+
+
+def _redirect_home(
+    message: str | None = None,
+    error: str | None = None,
+    tab: str | None = None,
+    lang: str | None = None,
+) -> RedirectResponse:
     query_parts: list[str] = []
     normalized_tab = _normalize_tab(tab)
+    normalized_lang = _normalize_lang(lang)
     if normalized_tab == "settings":
         query_parts.append("tab=settings")
+    if normalized_lang != "it":
+        query_parts.append(f"lang={normalized_lang}")
     if message:
         query_parts.append(f"message={quote_plus(message)}")
     if error:
@@ -79,10 +244,17 @@ def _redirect_home(message: str | None = None, error: str | None = None, tab: st
 
 
 @app.get("/")
-async def index(request: Request, message: str | None = None, error: str | None = None, tab: str | None = None):
+async def index(
+    request: Request,
+    message: str | None = None,
+    error: str | None = None,
+    tab: str | None = None,
+    lang: str | None = None,
+):
     saved_settings = load_translator_settings()
     effective_settings = get_effective_translator_config()
     active_tab = _normalize_tab(tab)
+    lang_code = _normalize_lang(lang)
     onedrive_roots = [str(path).replace('\\', '/') for path in discover_local_onedrive_roots()]
     onedrive_folders = [str(path).replace('\\', '/') for path in discover_local_onedrive_folders()]
 
@@ -97,6 +269,8 @@ async def index(request: Request, message: str | None = None, error: str | None 
             "message": message,
             "error": error,
             "active_tab": active_tab,
+            "lang_code": lang_code,
+            "t": UI_TEXTS[lang_code],
             "onedrive_roots": onedrive_roots,
             "onedrive_folders": onedrive_folders,
             "settings_locked": is_translator_settings_locked(),
@@ -133,7 +307,7 @@ async def health():
 
 
 @app.post("/upload-local")
-async def upload_local(files: list[UploadFile] = File(...)):
+async def upload_local(files: list[UploadFile] = File(...), lang: str = Form("it")):
     saved = 0
     for upload in files:
         if not upload.filename:
@@ -145,8 +319,8 @@ async def upload_local(files: list[UploadFile] = File(...)):
         saved += 1
 
     if saved == 0:
-        return _redirect_home(error="Nessun file valido selezionato")
-    return _redirect_home(message=f"Caricati {saved} file")
+        return _redirect_home(error="Nessun file valido selezionato", lang=lang)
+    return _redirect_home(message=f"Caricati {saved} file", lang=lang)
 
 
 @app.post("/import-onedrive")
@@ -155,6 +329,7 @@ async def import_onedrive(
     tenant_id: str = Form("common"),
     folder_path: str = Form(...),
     recursive: str | None = Form(None),
+    lang: str = Form("it"),
 ):
     try:
         imported = import_folder_from_onedrive(
@@ -165,11 +340,11 @@ async def import_onedrive(
             recursive=recursive == "true",
         )
     except OneDriveImportError as exc:
-        return _redirect_home(error=str(exc))
+        return _redirect_home(error=str(exc), lang=lang)
     except Exception as exc:  # noqa: BLE001
-        return _redirect_home(error=f"Errore import OneDrive: {exc}")
+        return _redirect_home(error=f"Errore import OneDrive: {exc}", lang=lang)
 
-    return _redirect_home(message=f"Importati {len(imported)} file da OneDrive")
+    return _redirect_home(message=f"Importati {len(imported)} file da OneDrive", lang=lang)
 
 
 @app.post("/process")
@@ -177,15 +352,16 @@ async def process_files(
     selected_files: list[str] | None = Form(None),
     source_lang: str = Form("pt"),
     target_langs: list[str] | None = Form(None),
+    lang: str = Form("it"),
 ):
     source_lang = source_lang.strip().lower() or "pt"
     target_langs = target_langs or []
     if not target_langs:
-        return _redirect_home(error="Seleziona almeno una lingua target", tab="workflow")
+        return _redirect_home(error="Seleziona almeno una lingua target", tab="workflow", lang=lang)
 
     all_files = _list_incoming()
     if not all_files:
-        return _redirect_home(error="Nessun file in coda", tab="workflow")
+        return _redirect_home(error="Nessun file in coda", tab="workflow", lang=lang)
 
     selected_set = set(selected_files or [])
     files_to_process = [
@@ -221,9 +397,9 @@ async def process_files(
 
     if failures:
         err = " | ".join(failures[:4])
-        return _redirect_home(message=f"Traduzioni completate: {completed}", error=err, tab="workflow")
+        return _redirect_home(message=f"Traduzioni completate: {completed}", error=err, tab="workflow", lang=lang)
 
-    return _redirect_home(message=f"Traduzioni completate: {completed}", tab="workflow")
+    return _redirect_home(message=f"Traduzioni completate: {completed}", tab="workflow", lang=lang)
 
 
 @app.post("/settings/translator")
@@ -238,11 +414,13 @@ async def save_translator_settings_route(
     batch_api_version: str = Form("2024-05-01"),
     batch_timeout_sec: str = Form("1800"),
     batch_poll_sec: str = Form("5"),
+    lang: str = Form("it"),
 ):
     if is_translator_settings_locked():
         return _redirect_home(
             error="Settings bloccate: usa variabili ambiente lato server (LOCK_TRANSLATOR_SETTINGS=1).",
             tab="settings",
+            lang=lang,
         )
 
     current = load_translator_settings()
@@ -259,36 +437,37 @@ async def save_translator_settings_route(
     batch_poll_sec = batch_poll_sec.strip() or "5"
 
     if not endpoint:
-        return _redirect_home(error="Endpoint Azure obbligatorio", tab="settings")
+        return _redirect_home(error="Endpoint Azure obbligatorio", tab="settings", lang=lang)
     if not endpoint.lower().startswith("https://"):
-        return _redirect_home(error="Endpoint Azure non valido: deve iniziare con https://", tab="settings")
+        return _redirect_home(error="Endpoint Azure non valido: deve iniziare con https://", tab="settings", lang=lang)
     if not key:
-        return _redirect_home(error="Key Azure obbligatoria", tab="settings")
+        return _redirect_home(error="Key Azure obbligatoria", tab="settings", lang=lang)
 
     try:
         timeout_int = int(timeout_sec)
     except ValueError:
-        return _redirect_home(error="Timeout non valido: usa un numero intero", tab="settings")
+        return _redirect_home(error="Timeout non valido: usa un numero intero", tab="settings", lang=lang)
 
     if timeout_int < 30 or timeout_int > 3600:
-        return _redirect_home(error="Timeout non valido: usa un valore tra 30 e 3600 secondi", tab="settings")
+        return _redirect_home(error="Timeout non valido: usa un valore tra 30 e 3600 secondi", tab="settings", lang=lang)
 
     try:
         batch_timeout_int = int(batch_timeout_sec)
         batch_poll_int = int(batch_poll_sec)
     except ValueError:
-        return _redirect_home(error="Batch timeout/poll non validi: usa numeri interi", tab="settings")
+        return _redirect_home(error="Batch timeout/poll non validi: usa numeri interi", tab="settings", lang=lang)
 
     if batch_timeout_int < 60 or batch_timeout_int > 7200:
-        return _redirect_home(error="Batch timeout non valido: usa un valore tra 60 e 7200 secondi", tab="settings")
+        return _redirect_home(error="Batch timeout non valido: usa un valore tra 60 e 7200 secondi", tab="settings", lang=lang)
     if batch_poll_int < 2 or batch_poll_int > 60:
-        return _redirect_home(error="Batch poll non valido: usa un valore tra 2 e 60 secondi", tab="settings")
+        return _redirect_home(error="Batch poll non valido: usa un valore tra 2 e 60 secondi", tab="settings", lang=lang)
 
     any_blob_value = bool(blob_connection_string or blob_source_container or blob_target_container)
     if any_blob_value and not (blob_connection_string and blob_source_container and blob_target_container):
         return _redirect_home(
             error="Config Blob incompleta: inserisci connection string, source container e target container",
             tab="settings",
+            lang=lang,
         )
 
     if blob_connection_string:
@@ -300,6 +479,7 @@ async def save_translator_settings_route(
                     "Inserisci la connection string completa (DefaultEndpointsProtocol=...;AccountName=...;AccountKey=...;EndpointSuffix=...)."
                 ),
                 tab="settings",
+                lang=lang,
             )
         if "accountkey=" not in blob_l or "accountname=" not in blob_l:
             return _redirect_home(
@@ -308,6 +488,7 @@ async def save_translator_settings_route(
                     "Recuperala da Storage Account > Access keys > Connection string."
                 ),
                 tab="settings",
+                lang=lang,
             )
 
     save_translator_settings(
@@ -322,4 +503,4 @@ async def save_translator_settings_route(
         batch_timeout_sec=str(batch_timeout_int),
         batch_poll_sec=str(batch_poll_int),
     )
-    return _redirect_home(message="Impostazioni Azure Translator salvate", tab="settings")
+    return _redirect_home(message="Impostazioni Azure Translator salvate", tab="settings", lang=lang)
