@@ -140,8 +140,8 @@
         <fieldset>
           <legend>{{ t.target_langs }}</legend>
           <div class="targets">
-            <label class="checkbox-row chip"><input type="checkbox" name="target_langs" value="en" checked /> {{ t.target_en_name }}</label>
-            <label class="checkbox-row chip"><input type="checkbox" name="target_langs" value="it" checked /> {{ t.target_it_name }}</label>
+            <label class="checkbox-row chip"><input type="checkbox" name="target_langs" value="en" checked /> {{ t.target_en_name if t.target_en_name is defined else 'English' }}</label>
+            <label class="checkbox-row chip"><input type="checkbox" name="target_langs" value="it" checked /> {{ t.target_it_name if t.target_it_name is defined else 'Italiano' }}</label>
           </div>
         </fieldset>
 
