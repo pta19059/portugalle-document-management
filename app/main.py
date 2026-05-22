@@ -42,6 +42,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
 UI_TEXTS = {
     "it": {
+        "app_title": "Portugalle Document Management",
         "hero_eyebrow": "Local AI Workflow",
         "hero_subtitle": "Pipeline locale per import e traduzione PT->EN/IT con Azure Document Translator (sync + PDF batch via Blob).",
         "tab_workflow": "Workflow",
@@ -79,6 +80,8 @@ UI_TEXTS = {
         "queue_files": "File in coda",
         "queue_empty": "Nessun file presente in data/incoming.",
         "target_langs": "Lingue target",
+        "target_en_name": "English",
+        "target_it_name": "Italiano",
         "start_translate": "Avvia traduzione",
         "processing": "Elaborazione in corso, attendi...",
         "processing_short": "Elaborazione...",
@@ -116,6 +119,7 @@ UI_TEXTS = {
         "kpi_output": "output",
     },
     "en": {
+        "app_title": "Portugalle Document Management",
         "hero_eyebrow": "Local AI Workflow",
         "hero_subtitle": "Local pipeline for PT->EN/IT import and translation with Azure Document Translator (sync + PDF batch via Blob).",
         "tab_workflow": "Workflow",
@@ -153,6 +157,8 @@ UI_TEXTS = {
         "queue_files": "Queued files",
         "queue_empty": "No files found in data/incoming.",
         "target_langs": "Target languages",
+        "target_en_name": "English",
+        "target_it_name": "Italian",
         "start_translate": "Start translation",
         "processing": "Processing, please wait...",
         "processing_short": "Processing...",
