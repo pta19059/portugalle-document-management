@@ -25,7 +25,7 @@
       </div>
     </header>
 
-    <nav class="tab-nav" aria-label="Navigazione sezione">
+    <nav class="tab-nav" aria-label="{{ t.tab_workflow }} / {{ t.tab_settings }}">
       <a href="/?tab=workflow{% if lang_code != 'it' %}&lang={{ lang_code }}{% endif %}" class="tab-link{% if active_tab != 'settings' %} tab-link-active{% endif %}">{{ t.tab_workflow }}</a>
       <a href="/?tab=settings{% if lang_code != 'it' %}&lang={{ lang_code }}{% endif %}" class="tab-link{% if active_tab == 'settings' %} tab-link-active{% endif %}">{{ t.tab_settings }}</a>
       <span class="tab-lang">{{ t.lang_label }}:
@@ -145,11 +145,11 @@
           </div>
         </fieldset>
 
-        <button type="submit" class="cta" id="process-submit" data-label="{{ t.start_translate }}">{{ t.start_translate }}</button>
+        <button type="submit" class="cta" id="process-submit" data-label="{{ t.start_translate }}" data-processing-label="{{ t.processing_short }}">{{ t.start_translate }}</button>
 
         <div id="process-status" class="process-status" hidden>
           <p>{{ t.processing }}</p>
-          <div class="progress-track" role="progressbar" aria-label="Stato elaborazione documenti" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-track" role="progressbar" aria-label="{{ t.processing }}" aria-valuemin="0" aria-valuemax="100">
             <div class="progress-bar"></div>
           </div>
         </div>
@@ -315,7 +315,7 @@
 
         if (submitButton) {
           submitButton.disabled = true;
-          submitButton.textContent = 'Elaborazione...';
+          submitButton.textContent = submitButton.getAttribute('data-processing-label') || 'Processing...';
         }
       });
     })();

@@ -45,4 +45,4 @@ def translate_text(text: str, source_lang: str, target_lang: str) -> str:
     try:
         return _translate_with_libretranslate(text, source_lang, target_lang)
     except Exception as exc:  # noqa: BLE001
-        raise TranslationError(f"Errore traduzione LibreTranslate: {exc}") from exc
+        raise TranslationError(f"LibreTranslate translation error: {exc}") from exc

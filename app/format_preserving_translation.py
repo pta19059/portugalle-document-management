@@ -55,4 +55,4 @@ def translate_file_preserve_format(
     except TranslationError:
         raise
     except Exception as exc:  # noqa: BLE001
-        raise TranslationError(f"Errore Azure Document Translator: {exc}") from exc
+        raise TranslationError(f"Azure Document Translator error: {exc}") from exc

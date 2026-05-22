@@ -83,7 +83,7 @@ def translate_document_with_azure(
 
     if response.status_code != 200:
         detail = _extract_error_message(response)
-        raise TranslationError(f"Errore Azure Document Translator ({response.status_code}): {detail}")
+        raise TranslationError(f"Azure Document Translator error ({response.status_code}): {detail}")
 
     target_path.parent.mkdir(parents=True, exist_ok=True)
     target_path.write_bytes(response.content)

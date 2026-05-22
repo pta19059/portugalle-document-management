@@ -182,7 +182,7 @@ def translate_pdf_with_azure_batch_blob(
     start_response = requests.post(batch_url, headers=headers, json=body, timeout=60)
     if start_response.status_code != 202:
         detail = _extract_error_message(start_response)
-        raise TranslationError(f"Errore Azure Batch start ({start_response.status_code}): {detail}")
+        raise TranslationError(f"Azure Batch start error ({start_response.status_code}): {detail}")
 
     operation_location = start_response.headers.get("Operation-Location", "").strip()
     if not operation_location:
@@ -196,7 +196,7 @@ def translate_pdf_with_azure_batch_blob(
         poll_response = requests.get(operation_location, headers={"Ocp-Apim-Subscription-Key": key}, timeout=30)
         if poll_response.status_code != 200:
             detail = _extract_error_message(poll_response)
-            raise TranslationError(f"Errore Azure Batch poll ({poll_response.status_code}): {detail}")
+            raise TranslationError(f"Azure Batch poll error ({poll_response.status_code}): {detail}")
 
         data = poll_response.json()
         raw_status = data.get("status", "")
