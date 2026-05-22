@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+.venv-app/
+.venv-pdfmath/
+venv/
+
+# Local runtime and secrets
+data/incoming/
+data/processed/
+data/settings/translator_settings.json
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
