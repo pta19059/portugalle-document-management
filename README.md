@@ -1,131 +1,136 @@
 # Portugalle Document Management
 
-Local application to:
-- Upload documents from your PC.
-- Import documents from OneDrive by selecting a synced local folder.
-- Translate from Portuguese (`pt`) to English (`en`) and Italian (`it`).
-- Save outputs in readable versioned folders (`data/processed/<YYYY-MM-DD_HH-MM-SS>/...`).
+Portugalle Document Management is a local-first document workflow application for importing, queuing, and translating files from Portuguese (`pt`) into English (`en`) and Italian (`it`) using Azure Document Translator.
 
-## Current Status
+The application is designed for practical day-to-day operations:
+- Local input/output folder workflow.
+- OneDrive local sync import (no App Registration required).
+- Azure sync translation for supported formats.
+- Azure batch + Blob workflow for PDF files.
+- Bilingual UI and runtime messages (Italian/English).
 
-This workspace was rebuilt after a file loss event and now includes:
-- FastAPI + Jinja2 UI.
-- Local file upload.
-- OneDrive local-synced-folder import (no App Registration required).
-- Azure translation engine with two modes:
-  - Sync mode (direct upload, no Blob) for supported formats.
-  - Batch + Blob mode for PDF.
-- Settings tab to configure Translator + Blob/Batch options.
-- Queue and processed output views.
-- Progress UI during processing.
-- UI language switch (Italian/English) via the app interface.
-- Runtime success/error messages localized in Italian/English based on selected app language.
+## Key Capabilities
 
-## Architecture
+- Upload files directly from the local machine.
+- Import files from synced OneDrive folders discovered automatically.
+- Process queued files into one or multiple target languages.
+- Preserve a timestamped output history under `data/processed/`.
+- Configure translator and Blob settings from the UI (`Settings` tab).
+- Lock settings changes for production-like environments.
 
-- Backend/UI: FastAPI + Jinja2.
-- Sync translation: Azure Document Translator (`/translator/document:translate`, `api-version=2024-05-01`).
-- PDF translation: Azure Document Translator Batch + Azure Blob Storage (`/translator/document/batches`, `api-version=2024-05-01`).
-- Local workflow remains unchanged:
-  - Input from `data/incoming/input_doc`.
-  - Output to `data/processed/<timestamp>/...`.
-  - Blob is used only as a temporary bridge for PDF jobs.
+## Solution Architecture
 
-## Supported Formats
+- UI and API: FastAPI + Jinja2.
+- Sync translation endpoint:
+  - `POST /translator/document:translate`
+  - API version: `2024-05-01`
+- PDF translation endpoint:
+  - `POST /translator/document/batches`
+  - API version: `2024-05-01`
+- Storage model:
+  - Input queue: `data/incoming/input_doc`
+  - Output archive: `data/processed/<YYYY-MM-DD_HH-MM-SS>/...`
+  - Azure Blob is used as a temporary bridge for PDF batch translation.
 
-Sync formats currently routed to Azure sync translation:
-- `.txt`, `.tsv`, `.tab`, `.csv`, `.html`, `.htm`, `.mhtml`, `.mht`, `.pptx`, `.xlsx`, `.docx`, `.msg`, `.xlf`
+## Supported File Types
 
-PDF files are routed automatically to the batch + Blob pipeline.
+- Sync translation route:
+  - `.txt`, `.tsv`, `.tab`, `.csv`, `.html`, `.htm`, `.mhtml`, `.mht`, `.pptx`, `.xlsx`, `.docx`, `.msg`, `.xlf`
+- Batch translation route:
+  - `.pdf`
 
-## Requirements
+## Prerequisites
 
-- Windows + PowerShell (tested).
-- Python 3.11+ recommended.
-- Reachable Azure Translator endpoint (custom domain).
-- Azure Translator key.
-- Azure Blob Storage account (connection string + source/target containers) for PDF translation.
+- Windows + PowerShell.
+- Python 3.11 or later.
+- Azure Translator resource (custom domain endpoint + key).
+- Azure Storage Account (required for PDF batch translation):
+  - Blob connection string
+  - Source container
+  - Target container
 
 ## Quick Start
 
-1. Set environment variables in PowerShell:
+1. Configure required environment variables in PowerShell:
 
 ```powershell
 $env:AZURE_TRANSLATOR_ENDPOINT = "https://<resource-name>.cognitiveservices.azure.com"
 $env:AZURE_TRANSLATOR_KEY = "<translator-key>"
 ```
 
-2. Start the app:
+2. Start the application:
 
 ```powershell
 .\run_local.ps1
 ```
 
-The bootstrap script uses `.venv-app` to reduce issues with stale or broken virtual environments.
+3. Open the UI:
 
-App URL: `http://127.0.0.1:8000`
+```text
+http://127.0.0.1:8000
+```
 
-## Environment Variables
+## Configuration Reference
 
-- `TRANSLATION_BACKEND=azure_document`
-- `AZURE_TRANSLATOR_ENDPOINT=https://<resource-name>.cognitiveservices.azure.com`
-- `AZURE_TRANSLATOR_KEY=<key>`
-- `AZURE_TRANSLATOR_API_VERSION=2024-05-01` (default)
-- `AZURE_TRANSLATOR_TIMEOUT_SEC=600` (optional)
-- `AZURE_BLOB_CONNECTION_STRING=<connection_string>` (for PDF)
-- `AZURE_BLOB_SOURCE_CONTAINER=<source_container>` (for PDF)
-- `AZURE_BLOB_TARGET_CONTAINER=<target_container>` (for PDF)
-- `AZURE_TRANSLATOR_BATCH_API_VERSION=2024-05-01` (optional)
-- `AZURE_TRANSLATOR_BATCH_TIMEOUT_SEC=1800` (optional)
-- `AZURE_TRANSLATOR_BATCH_POLL_SEC=5` (optional)
-- `LOCK_TRANSLATOR_SETTINGS=1` (optional, locks settings edits in UI)
+| Variable | Required | Description |
+|---|---|---|
+| `TRANSLATION_BACKEND` | Optional | Backend selector (default flow uses Azure document translation). |
+| `AZURE_TRANSLATOR_ENDPOINT` | Yes | Translator endpoint (custom domain). |
+| `AZURE_TRANSLATOR_KEY` | Yes | Translator key. |
+| `AZURE_TRANSLATOR_API_VERSION` | Optional | Sync API version (default `2024-05-01`). |
+| `AZURE_TRANSLATOR_TIMEOUT_SEC` | Optional | Sync request timeout (default `600`). |
+| `AZURE_BLOB_CONNECTION_STRING` | PDF only | Full Blob connection string. |
+| `AZURE_BLOB_SOURCE_CONTAINER` | PDF only | Source Blob container for PDF batch input. |
+| `AZURE_BLOB_TARGET_CONTAINER` | PDF only | Target Blob container for PDF batch output. |
+| `AZURE_TRANSLATOR_BATCH_API_VERSION` | Optional | Batch API version (default `2024-05-01`). |
+| `AZURE_TRANSLATOR_BATCH_TIMEOUT_SEC` | Optional | Batch timeout in seconds (default `1800`). |
+| `AZURE_TRANSLATOR_BATCH_POLL_SEC` | Optional | Batch polling interval in seconds (default `5`). |
+| `LOCK_TRANSLATOR_SETTINGS` | Optional | If set to `1`, disables Settings updates from UI. |
 
-## Settings UI
+## OneDrive Import (Local Sync Mode)
 
-- Available directly in the home page (`Settings` tab).
-- Stores UI settings in `data/settings/translator_settings.json`.
-- Environment variables always override saved settings.
-- Key and Blob connection string fields are password-type in UI.
-- If key/connection string fields are left empty, existing saved values are retained.
+This mode imports documents from folders already synced by the OneDrive desktop client.
 
-## OneDrive Import (Mode 2: Local Sync)
-
-- No MSAL/Graph usage.
+- No Graph API usage.
+- No MSAL flow.
 - No Azure Entra App Registration required.
-- App detects OneDrive paths from:
-  - Environment (`OneDrive`, `OneDriveConsumer`, `OneDriveCommercial`).
-  - Windows Registry (`HKCU\Software\Microsoft\OneDrive`, Personal/Business accounts).
-  - Common user paths (`C:/Users/*/OneDrive*`).
-- UI shows:
-  - Detected OneDrive roots.
-  - Selectable synced folders list.
-  - Manual path override field.
-  - Optional recursive import.
-- Imported files are copied into `data/incoming/input_doc` and are then available for translation.
 
-## Production Hardening Notes
+Path discovery sources include:
+- Environment variables (`OneDrive`, `OneDriveConsumer`, `OneDriveCommercial`).
+- Windows Registry (`HKCU\Software\Microsoft\OneDrive`, Personal/Business accounts).
+- Common Windows user folders (`C:/Users/*/OneDrive*`).
 
-If this app is exposed publicly:
+Imported files are copied into `data/incoming/input_doc` and become immediately available for translation.
+
+## UI and Localization
+
+- App UI supports Italian and English.
+- Runtime success/error messages follow the selected UI language.
+- Language selection is preserved across tabs and post/redirect workflows.
+
+## Security and Production Guidance
+
+If the app is exposed beyond local development:
 - Set `LOCK_TRANSLATOR_SETTINGS=1`.
-- Manage secrets only through server-side environment variables or a secret manager.
-- Do not expose `data/settings/translator_settings.json` via web server/reverse proxy.
-- Use HTTPS and authentication for administrative UI access.
+- Manage secrets through server-side environment variables or a dedicated secret manager.
+- Ensure `data/settings/translator_settings.json` is never publicly exposed.
+- Use HTTPS and authentication in front of the application.
 
-## Project Structure
+## Repository Layout
 
-- `app/main.py`: FastAPI routes and workflow orchestration.
+- `app/main.py`: FastAPI routes, orchestration, UI wiring, localization handling.
 - `app/azure_document_translator.py`: Azure sync translation client.
-- `app/azure_pdf_batch_translator.py`: PDF batch pipeline (upload, job start, polling, download).
-- `app/format_preserving_translation.py`: routing dispatcher (PDF -> batch; supported formats -> sync).
-- `app/onedrive_connector.py`: OneDrive local-synced-folder discovery/import.
-- `app/settings_store.py`: settings load/save/effective config handling.
-- `app/templates/index.html`: main UI template.
-- `app/static/style.css`: styling.
-- `run_local.ps1`: local bootstrap/start.
+- `app/azure_pdf_batch_translator.py`: PDF batch workflow (upload, submit, poll, download).
+- `app/format_preserving_translation.py`: format-aware dispatch logic.
+- `app/onedrive_connector.py`: OneDrive path discovery and local import.
+- `app/settings_store.py`: settings persistence and effective config resolution.
+- `app/templates/index.html`: main Jinja2 template.
+- `app/static/style.css`: UI styles.
+- `run_local.ps1`: local bootstrap/start script.
 
-## Operational Notes
+## Operational Checklist
 
-- Health check endpoint: `GET /health`.
-- If translation fails, verify endpoint/key and Azure quota.
-- For PDF translation, verify Blob configuration is complete.
-- Blob connection string must be a full connection string (with `AccountName` + `AccountKey`), not a Blob URL.
+- Health check: `GET /health`.
+- Validate Translator endpoint/key if translations fail.
+- Validate Blob configuration for any PDF workflow issue.
+- Ensure Blob configuration uses a full connection string (`AccountName` + `AccountKey`), not a Blob URL.
