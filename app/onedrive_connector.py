@@ -33,6 +33,28 @@ class OneDriveImportError(RuntimeError):
     pass
 
 
+RUNTIME_TEXTS = {
+    "it": {
+        "invalid_path": "Path OneDrive non valida: seleziona una cartella locale sincronizzata (es. C:/Users/<utente>/OneDrive/... ).",
+        "no_supported_files": "Nessun file supportato trovato nella cartella selezionata. Formati importabili: pdf, docx, xlsx, pptx, txt, csv, html, msg, xlf.",
+    },
+    "en": {
+        "invalid_path": "Invalid OneDrive path: select a local synced folder (for example C:/Users/<user>/OneDrive/... ).",
+        "no_supported_files": "No supported files were found in the selected folder. Supported formats: pdf, docx, xlsx, pptx, txt, csv, html, msg, xlf.",
+    },
+}
+
+
+def _normalize_lang(lang: str | None) -> str:
+    if (lang or "").strip().lower() == "en":
+        return "en"
+    return "it"
+
+
+def _rt(lang: str | None, key: str) -> str:
+    return RUNTIME_TEXTS[_normalize_lang(lang)].get(key, key)
+
+
 def _add_if_valid(path: Path | None, collector: list[Path], seen: set[str]) -> None:
     if path is None:
         return
@@ -151,14 +173,13 @@ def import_folder_from_onedrive(
     folder_path: str,
     incoming_dir: Path,
     recursive: bool,
+    lang: str = "it",
 ) -> list[Path]:
     _ = (client_id, tenant_id)
 
     source_folder = Path(folder_path).expanduser()
     if not source_folder.exists() or not source_folder.is_dir():
-        raise OneDriveImportError(
-            "Path OneDrive non valida: seleziona una cartella locale sincronizzata (es. C:/Users/<utente>/OneDrive/... )."
-        )
+        raise OneDriveImportError(_rt(lang, "invalid_path"))
 
     incoming_dir.mkdir(parents=True, exist_ok=True)
 
@@ -166,10 +187,7 @@ def import_folder_from_onedrive(
     source_files = [p for p in iterator if p.is_file() and p.suffix.lower() in SUPPORTED_IMPORT_EXTENSIONS]
 
     if not source_files:
-        raise OneDriveImportError(
-            "Nessun file supportato trovato nella cartella selezionata. "
-            "Formati importabili: pdf, docx, xlsx, pptx, txt, csv, html, msg, xlf."
-        )
+        raise OneDriveImportError(_rt(lang, "no_supported_files"))
 
     imported: list[Path] = []
     for src in source_files:

@@ -190,6 +190,56 @@ UI_TEXTS = {
 }
 
 
+RUNTIME_TEXTS = {
+    "it": {
+        "invalid_upload": "Nessun file valido selezionato",
+        "uploaded_files": "Caricati {count} file",
+        "onedrive_import_error": "Errore import OneDrive: {error}",
+        "onedrive_imported": "Importati {count} file da OneDrive",
+        "target_required": "Seleziona almeno una lingua target",
+        "queue_empty": "Nessun file in coda",
+        "translation_done": "Traduzioni completate: {count}",
+        "unexpected_error": "errore inatteso",
+        "settings_locked": "Settings bloccate: usa variabili ambiente lato server (LOCK_TRANSLATOR_SETTINGS=1).",
+        "endpoint_required": "Endpoint Azure obbligatorio",
+        "endpoint_invalid": "Endpoint Azure non valido: deve iniziare con https://",
+        "key_required": "Key Azure obbligatoria",
+        "timeout_int": "Timeout non valido: usa un numero intero",
+        "timeout_range": "Timeout non valido: usa un valore tra 30 e 3600 secondi",
+        "batch_int": "Batch timeout/poll non validi: usa numeri interi",
+        "batch_timeout_range": "Batch timeout non valido: usa un valore tra 60 e 7200 secondi",
+        "batch_poll_range": "Batch poll non valido: usa un valore tra 2 e 60 secondi",
+        "blob_incomplete": "Config Blob incompleta: inserisci connection string, source container e target container",
+        "blob_url": "Blob connection string non valida: hai inserito un URL. Inserisci la connection string completa (DefaultEndpointsProtocol=...;AccountName=...;AccountKey=...;EndpointSuffix=...).",
+        "blob_missing_parts": "Blob connection string non valida: devono essere presenti AccountName e AccountKey. Recuperala da Storage Account > Access keys > Connection string.",
+        "settings_saved": "Impostazioni Azure Translator salvate",
+    },
+    "en": {
+        "invalid_upload": "No valid file selected",
+        "uploaded_files": "Uploaded {count} files",
+        "onedrive_import_error": "OneDrive import error: {error}",
+        "onedrive_imported": "Imported {count} files from OneDrive",
+        "target_required": "Select at least one target language",
+        "queue_empty": "No queued files",
+        "translation_done": "Translations completed: {count}",
+        "unexpected_error": "unexpected error",
+        "settings_locked": "Settings are locked: use server-side environment variables (LOCK_TRANSLATOR_SETTINGS=1).",
+        "endpoint_required": "Azure endpoint is required",
+        "endpoint_invalid": "Invalid Azure endpoint: it must start with https://",
+        "key_required": "Azure key is required",
+        "timeout_int": "Invalid timeout: use an integer value",
+        "timeout_range": "Invalid timeout: use a value between 30 and 3600 seconds",
+        "batch_int": "Invalid batch timeout/poll: use integer values",
+        "batch_timeout_range": "Invalid batch timeout: use a value between 60 and 7200 seconds",
+        "batch_poll_range": "Invalid batch poll: use a value between 2 and 60 seconds",
+        "blob_incomplete": "Incomplete Blob configuration: provide connection string, source container, and target container",
+        "blob_url": "Invalid Blob connection string: a URL was provided. Use the full connection string (DefaultEndpointsProtocol=...;AccountName=...;AccountKey=...;EndpointSuffix=...).",
+        "blob_missing_parts": "Invalid Blob connection string: AccountName and AccountKey are required. Retrieve it from Storage Account > Access keys > Connection string.",
+        "settings_saved": "Azure Translator settings saved",
+    },
+}
+
+
 def _list_incoming() -> list[Path]:
     return sorted([p for p in INCOMING_DIR.rglob("*") if p.is_file()], key=lambda p: p.name.lower())
 
@@ -219,6 +269,12 @@ def _normalize_lang(lang: str | None) -> str:
     if value in UI_TEXTS:
         return value
     return "it"
+
+
+def _rt(lang: str | None, key: str, **kwargs: object) -> str:
+    lang_code = _normalize_lang(lang)
+    template = RUNTIME_TEXTS.get(lang_code, RUNTIME_TEXTS["it"]).get(key, key)
+    return template.format(**kwargs)
 
 
 def _redirect_home(
@@ -319,8 +375,8 @@ async def upload_local(files: list[UploadFile] = File(...), lang: str = Form("it
         saved += 1
 
     if saved == 0:
-        return _redirect_home(error="Nessun file valido selezionato", lang=lang)
-    return _redirect_home(message=f"Caricati {saved} file", lang=lang)
+        return _redirect_home(error=_rt(lang, "invalid_upload"), lang=lang)
+    return _redirect_home(message=_rt(lang, "uploaded_files", count=saved), lang=lang)
 
 
 @app.post("/import-onedrive")
@@ -338,13 +394,14 @@ async def import_onedrive(
             folder_path=folder_path,
             incoming_dir=DEFAULT_INCOMING_SUBDIR,
             recursive=recursive == "true",
+            lang=lang,
         )
     except OneDriveImportError as exc:
         return _redirect_home(error=str(exc), lang=lang)
     except Exception as exc:  # noqa: BLE001
-        return _redirect_home(error=f"Errore import OneDrive: {exc}", lang=lang)
+        return _redirect_home(error=_rt(lang, "onedrive_import_error", error=str(exc)), lang=lang)
 
-    return _redirect_home(message=f"Importati {len(imported)} file da OneDrive", lang=lang)
+    return _redirect_home(message=_rt(lang, "onedrive_imported", count=len(imported)), lang=lang)
 
 
 @app.post("/process")
@@ -357,11 +414,11 @@ async def process_files(
     source_lang = source_lang.strip().lower() or "pt"
     target_langs = target_langs or []
     if not target_langs:
-        return _redirect_home(error="Seleziona almeno una lingua target", tab="workflow", lang=lang)
+        return _redirect_home(error=_rt(lang, "target_required"), tab="workflow", lang=lang)
 
     all_files = _list_incoming()
     if not all_files:
-        return _redirect_home(error="Nessun file in coda", tab="workflow", lang=lang)
+        return _redirect_home(error=_rt(lang, "queue_empty"), tab="workflow", lang=lang)
 
     selected_set = set(selected_files or [])
     files_to_process = [
@@ -393,13 +450,13 @@ async def process_files(
                 failures.append(f"{rel} ({target_lang}): {exc}")
             except Exception as exc:  # noqa: BLE001
                 rel = source_file.relative_to(INCOMING_DIR)
-                failures.append(f"{rel} ({target_lang}): errore inatteso: {exc}")
+                failures.append(f"{rel} ({target_lang}): {_rt(lang, 'unexpected_error')}: {exc}")
 
     if failures:
         err = " | ".join(failures[:4])
-        return _redirect_home(message=f"Traduzioni completate: {completed}", error=err, tab="workflow", lang=lang)
+        return _redirect_home(message=_rt(lang, "translation_done", count=completed), error=err, tab="workflow", lang=lang)
 
-    return _redirect_home(message=f"Traduzioni completate: {completed}", tab="workflow", lang=lang)
+    return _redirect_home(message=_rt(lang, "translation_done", count=completed), tab="workflow", lang=lang)
 
 
 @app.post("/settings/translator")
@@ -418,7 +475,7 @@ async def save_translator_settings_route(
 ):
     if is_translator_settings_locked():
         return _redirect_home(
-            error="Settings bloccate: usa variabili ambiente lato server (LOCK_TRANSLATOR_SETTINGS=1).",
+            error=_rt(lang, "settings_locked"),
             tab="settings",
             lang=lang,
         )
@@ -437,35 +494,35 @@ async def save_translator_settings_route(
     batch_poll_sec = batch_poll_sec.strip() or "5"
 
     if not endpoint:
-        return _redirect_home(error="Endpoint Azure obbligatorio", tab="settings", lang=lang)
+        return _redirect_home(error=_rt(lang, "endpoint_required"), tab="settings", lang=lang)
     if not endpoint.lower().startswith("https://"):
-        return _redirect_home(error="Endpoint Azure non valido: deve iniziare con https://", tab="settings", lang=lang)
+        return _redirect_home(error=_rt(lang, "endpoint_invalid"), tab="settings", lang=lang)
     if not key:
-        return _redirect_home(error="Key Azure obbligatoria", tab="settings", lang=lang)
+        return _redirect_home(error=_rt(lang, "key_required"), tab="settings", lang=lang)
 
     try:
         timeout_int = int(timeout_sec)
     except ValueError:
-        return _redirect_home(error="Timeout non valido: usa un numero intero", tab="settings", lang=lang)
+        return _redirect_home(error=_rt(lang, "timeout_int"), tab="settings", lang=lang)
 
     if timeout_int < 30 or timeout_int > 3600:
-        return _redirect_home(error="Timeout non valido: usa un valore tra 30 e 3600 secondi", tab="settings", lang=lang)
+        return _redirect_home(error=_rt(lang, "timeout_range"), tab="settings", lang=lang)
 
     try:
         batch_timeout_int = int(batch_timeout_sec)
         batch_poll_int = int(batch_poll_sec)
     except ValueError:
-        return _redirect_home(error="Batch timeout/poll non validi: usa numeri interi", tab="settings", lang=lang)
+        return _redirect_home(error=_rt(lang, "batch_int"), tab="settings", lang=lang)
 
     if batch_timeout_int < 60 or batch_timeout_int > 7200:
-        return _redirect_home(error="Batch timeout non valido: usa un valore tra 60 e 7200 secondi", tab="settings", lang=lang)
+        return _redirect_home(error=_rt(lang, "batch_timeout_range"), tab="settings", lang=lang)
     if batch_poll_int < 2 or batch_poll_int > 60:
-        return _redirect_home(error="Batch poll non valido: usa un valore tra 2 e 60 secondi", tab="settings", lang=lang)
+        return _redirect_home(error=_rt(lang, "batch_poll_range"), tab="settings", lang=lang)
 
     any_blob_value = bool(blob_connection_string or blob_source_container or blob_target_container)
     if any_blob_value and not (blob_connection_string and blob_source_container and blob_target_container):
         return _redirect_home(
-            error="Config Blob incompleta: inserisci connection string, source container e target container",
+            error=_rt(lang, "blob_incomplete"),
             tab="settings",
             lang=lang,
         )
@@ -474,19 +531,13 @@ async def save_translator_settings_route(
         blob_l = blob_connection_string.lower()
         if blob_l.startswith("http://") or blob_l.startswith("https://"):
             return _redirect_home(
-                error=(
-                    "Blob connection string non valida: hai inserito un URL. "
-                    "Inserisci la connection string completa (DefaultEndpointsProtocol=...;AccountName=...;AccountKey=...;EndpointSuffix=...)."
-                ),
+                error=_rt(lang, "blob_url"),
                 tab="settings",
                 lang=lang,
             )
         if "accountkey=" not in blob_l or "accountname=" not in blob_l:
             return _redirect_home(
-                error=(
-                    "Blob connection string non valida: devono essere presenti AccountName e AccountKey. "
-                    "Recuperala da Storage Account > Access keys > Connection string."
-                ),
+                error=_rt(lang, "blob_missing_parts"),
                 tab="settings",
                 lang=lang,
             )
@@ -503,4 +554,4 @@ async def save_translator_settings_route(
         batch_timeout_sec=str(batch_timeout_int),
         batch_poll_sec=str(batch_poll_int),
     )
-    return _redirect_home(message="Impostazioni Azure Translator salvate", tab="settings", lang=lang)
+    return _redirect_home(message=_rt(lang, "settings_saved"), tab="settings", lang=lang)

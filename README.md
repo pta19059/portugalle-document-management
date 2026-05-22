@@ -19,6 +19,7 @@ This workspace was rebuilt after a file loss event and now includes:
 - Queue and processed output views.
 - Progress UI during processing.
 - UI language switch (Italian/English) via the app interface.
+- Runtime success/error messages localized in Italian/English based on selected app language.
 
 ## Architecture
 
