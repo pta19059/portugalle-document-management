@@ -75,6 +75,9 @@
       <h2>{{ t.sec_onedrive_title }}</h2>
       <form action="/import-onedrive" method="post">
         <input type="hidden" name="lang" value="{{ lang_code }}" />
+        {% if onedrive_mode == 'graph' %}
+          <p class="hint">{{ t.onedrive_cloud_hint }}</p>
+        {% endif %}
         {% if onedrive_roots %}
           <label>{{ t.onedrive_roots }}
             <div class="list">

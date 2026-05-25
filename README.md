@@ -86,6 +86,11 @@ http://127.0.0.1:8000
 | `AZURE_TRANSLATOR_BATCH_TIMEOUT_SEC` | Optional | Batch timeout in seconds (default `1800`). |
 | `AZURE_TRANSLATOR_BATCH_POLL_SEC` | Optional | Batch polling interval in seconds (default `5`). |
 | `LOCK_TRANSLATOR_SETTINGS` | Optional | If set to `1`, disables Settings updates from UI. |
+| `ONEDRIVE_CONNECTOR_MODE` | Optional | `local-sync` (default) or `graph`. If omitted, `graph` is auto-enabled when all Graph settings exist. |
+| `ONEDRIVE_TENANT_ID` | OneDrive cloud | Microsoft Entra tenant ID for Graph token request. |
+| `ONEDRIVE_CLIENT_ID` | OneDrive cloud | App registration client ID with Microsoft Graph permissions. |
+| `ONEDRIVE_CLIENT_SECRET` | OneDrive cloud | Client secret for app registration (store in App Service settings / Key Vault). |
+| `ONEDRIVE_USER_ID` | OneDrive cloud | Target OneDrive owner (UPN or Entra object ID). |
 
 ## OneDrive Import (Local Sync Mode)
 
@@ -101,6 +106,23 @@ Path discovery sources include:
 - Common Windows user folders (`C:/Users/*/OneDrive*`).
 
 Imported files are copied into `data/incoming/input_doc` and become immediately available for translation.
+
+## OneDrive Import (Cloud Connector on Azure)
+
+When the app is hosted on App Service, local synced folders are not available. Enable the cloud connector:
+
+1. Configure app settings:
+  - `ONEDRIVE_CONNECTOR_MODE=graph`
+  - `ONEDRIVE_TENANT_ID=<tenant-guid>`
+  - `ONEDRIVE_CLIENT_ID=<app-client-id>`
+  - `ONEDRIVE_CLIENT_SECRET=<client-secret>`
+  - `ONEDRIVE_USER_ID=<user-upn-or-object-id>`
+2. Grant Microsoft Graph application permissions for the app registration (for example `Files.Read.All`) and grant admin consent.
+3. In the UI, select a folder from discovered cloud paths or enter a cloud path manually (for example `Documents/Contracts`).
+
+Notes:
+- `local-sync` remains the recommended mode for developer workstation usage.
+- `graph` mode is recommended for App Service and any hosted/public deployment.
 
 OneDrive picker UX includes:
 - Live folder filtering in the select panel.

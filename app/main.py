@@ -14,6 +14,7 @@ from .onedrive_connector import (
     OneDriveImportError,
     discover_local_onedrive_folders,
     discover_local_onedrive_roots,
+    get_onedrive_connector_mode,
     import_folder_from_onedrive,
 )
 from .settings_store import (
@@ -60,12 +61,12 @@ UI_TEXTS = {
         "help_output": "Output:",
         "help_output_desc": "file tradotti in",
         "help_onedrive": "OneDrive:",
-        "help_onedrive_desc": "import da cartella locale gia sincronizzata, senza App Registration.",
+        "help_onedrive_desc": "import da OneDrive locale sincronizzato oppure via connettore cloud (Microsoft Graph).",
         "help_hint": "Configura AZURE_TRANSLATOR_ENDPOINT e AZURE_TRANSLATOR_KEY. Per PDF configura anche Blob nella tab Settings.",
         "sec_upload_title": "1) Carica Documenti Locali",
         "upload_label": "Seleziona uno o piu file",
         "upload_button": "Carica",
-        "sec_onedrive_title": "2) Import da OneDrive (cartella locale sincronizzata)",
+        "sec_onedrive_title": "2) Import da OneDrive",
         "onedrive_roots": "Radici OneDrive rilevate sul PC",
         "onedrive_select": "Seleziona cartella OneDrive sincronizzata",
         "onedrive_select_placeholder": "-- seleziona una cartella --",
@@ -73,12 +74,13 @@ UI_TEXTS = {
         "onedrive_filter_placeholder": "Digita per filtrare (es. Documents, Contracts)",
         "onedrive_count_shown": "visibili",
         "onedrive_count_total": "totali",
-        "onedrive_path": "Path cartella OneDrive (es. Documenti/Contratti)",
-        "onedrive_path_placeholder": "C:/Users/<utente>/OneDrive/Documenti/Contratti",
+        "onedrive_path": "Path cartella OneDrive",
+        "onedrive_path_placeholder": "Locale: C:/Users/<utente>/OneDrive/Documenti/Contratti | Cloud: Documents/Contratti",
         "onedrive_recursive": "Import ricorsivo (sottocartelle)",
         "onedrive_recursive_desc": "Se attivo, importa anche i file presenti nelle sottocartelle della cartella selezionata.",
         "onedrive_import": "Importa cartella selezionata",
         "onedrive_none": "Nessuna cartella OneDrive rilevata automaticamente. Inserisci il path manualmente.",
+        "onedrive_cloud_hint": "Modalita cloud attiva: imposta variabili GRAPH_* e usa percorsi cartella OneDrive (es. Documents/Contratti).",
         "sec_translate_title": "3) Traduce PT -> EN/IT",
         "source_lang": "Lingua sorgente",
         "queue_files": "File in coda",
@@ -141,12 +143,12 @@ UI_TEXTS = {
         "help_output": "Output:",
         "help_output_desc": "translated files in",
         "help_onedrive": "OneDrive:",
-        "help_onedrive_desc": "import from a local synced folder, no App Registration required.",
+        "help_onedrive_desc": "import from local synced OneDrive or through cloud connector (Microsoft Graph).",
         "help_hint": "Configure AZURE_TRANSLATOR_ENDPOINT and AZURE_TRANSLATOR_KEY. For PDFs configure Blob as well in the Settings tab.",
         "sec_upload_title": "1) Upload Local Documents",
         "upload_label": "Select one or more files",
         "upload_button": "Upload",
-        "sec_onedrive_title": "2) Import from OneDrive (local synced folder)",
+        "sec_onedrive_title": "2) Import from OneDrive",
         "onedrive_roots": "OneDrive roots detected on this PC",
         "onedrive_select": "Select synced OneDrive folder",
         "onedrive_select_placeholder": "-- select a folder --",
@@ -154,12 +156,13 @@ UI_TEXTS = {
         "onedrive_filter_placeholder": "Type to filter (for example Documents, Contracts)",
         "onedrive_count_shown": "shown",
         "onedrive_count_total": "total",
-        "onedrive_path": "OneDrive folder path (example: Documents/Contracts)",
-        "onedrive_path_placeholder": "C:/Users/<user>/OneDrive/Documents/Contracts",
+        "onedrive_path": "OneDrive folder path",
+        "onedrive_path_placeholder": "Local: C:/Users/<user>/OneDrive/Documents/Contracts | Cloud: Documents/Contracts",
         "onedrive_recursive": "Recursive import (subfolders)",
         "onedrive_recursive_desc": "If enabled, files from subfolders of the selected folder are imported too.",
         "onedrive_import": "Import selected folder",
         "onedrive_none": "No OneDrive folder was detected automatically. Enter the path manually.",
+        "onedrive_cloud_hint": "Cloud mode is active: set GRAPH_* app settings and use OneDrive folder paths (for example Documents/Contracts).",
         "sec_translate_title": "3) Translate PT -> EN/IT",
         "source_lang": "Source language",
         "queue_files": "Queued files",
@@ -327,6 +330,7 @@ async def index(
     effective_settings = get_effective_translator_config()
     active_tab = _normalize_tab(tab)
     lang_code = _normalize_lang(lang)
+    onedrive_mode = get_onedrive_connector_mode()
     onedrive_roots = [str(path).replace('\\', '/') for path in discover_local_onedrive_roots()]
     onedrive_folders = [str(path).replace('\\', '/') for path in discover_local_onedrive_folders()]
 
@@ -345,6 +349,7 @@ async def index(
             "t": UI_TEXTS[lang_code],
             "onedrive_roots": onedrive_roots,
             "onedrive_folders": onedrive_folders,
+            "onedrive_mode": onedrive_mode,
             "settings_locked": is_translator_settings_locked(),
             "translator_settings": {
                 "endpoint": saved_settings.get("endpoint", ""),
