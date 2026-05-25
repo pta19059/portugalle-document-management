@@ -86,14 +86,30 @@
         {% endif %}
 
         {% if onedrive_folders %}
-          <label>{{ t.onedrive_select }}
-            <select id="onedrive-folder-select">
-              <option value="">{{ t.onedrive_select_placeholder }}</option>
-              {% for folder in onedrive_folders %}
-                <option value="{{ folder }}">{{ folder }}</option>
-              {% endfor %}
-            </select>
-          </label>
+          <div class="onedrive-select-block">
+            <label for="onedrive-folder-select">{{ t.onedrive_select }}</label>
+            <div class="onedrive-picker">
+              <label for="onedrive-folder-filter" class="onedrive-filter-label">{{ t.onedrive_filter }}</label>
+              <input
+                type="text"
+                id="onedrive-folder-filter"
+                placeholder="{{ t.onedrive_filter_placeholder }}"
+                autocomplete="off"
+              />
+              <div class="onedrive-picker-meta" id="onedrive-folder-count"></div>
+              <select
+                id="onedrive-folder-select"
+                size="10"
+                data-count-shown-label="{{ t.onedrive_count_shown }}"
+                data-count-total-label="{{ t.onedrive_count_total }}"
+              >
+                <option value="">{{ t.onedrive_select_placeholder }}</option>
+                {% for folder in onedrive_folders %}
+                  <option value="{{ folder }}" title="{{ folder }}">{{ folder if folder|length <= 88 else '...' ~ folder[-85:] }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
         {% endif %}
 
         <label>{{ t.onedrive_path }}
@@ -324,9 +340,62 @@
       const input = document.getElementById('onedrive-folder-path');
       const select = document.getElementById('onedrive-folder-select');
       const submit = document.getElementById('onedrive-import-submit');
+      const filterInput = document.getElementById('onedrive-folder-filter');
+      const countNode = document.getElementById('onedrive-folder-count');
 
       if (!input || !submit) {
         return;
+      }
+
+      let allFolderOptions = [];
+      if (select) {
+        allFolderOptions = Array.from(select.options)
+          .filter((opt) => opt.value)
+          .map((opt) => ({ value: opt.value, text: opt.textContent || opt.value, title: opt.title || opt.value }));
+      }
+
+      const updateCount = (shown, total) => {
+        if (!countNode) {
+          return;
+        }
+        const shownLabel = (select && select.dataset.countShownLabel) || 'shown';
+        const totalLabel = (select && select.dataset.countTotalLabel) || 'total';
+        countNode.textContent = `${shown} ${shownLabel} / ${total} ${totalLabel}`;
+      };
+
+      const rebuildFolderOptions = (filterValue) => {
+        if (!select) {
+          return;
+        }
+        const normalized = (filterValue || '').trim().toLowerCase();
+        const selectedValue = select.value;
+        const matches = normalized
+          ? allFolderOptions.filter((opt) => opt.value.toLowerCase().includes(normalized))
+          : allFolderOptions;
+
+        select.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '{{ t.onedrive_select_placeholder }}';
+        select.appendChild(placeholder);
+
+        matches.forEach((opt) => {
+          const option = document.createElement('option');
+          option.value = opt.value;
+          option.textContent = opt.text;
+          option.title = opt.title;
+          select.appendChild(option);
+        });
+
+        const selectedStillVisible = matches.some((opt) => opt.value === selectedValue);
+        select.value = selectedStillVisible ? selectedValue : '';
+        updateCount(matches.length, allFolderOptions.length);
+      };
+
+      if (filterInput) {
+        filterInput.addEventListener('input', () => {
+          rebuildFolderOptions(filterInput.value);
+        });
       }
 
       const syncSubmitState = () => {
@@ -347,6 +416,7 @@
       }
 
       input.addEventListener('input', syncSubmitState);
+      rebuildFolderOptions(filterInput ? filterInput.value : '');
       syncSubmitState();
     })();
   </script>

@@ -102,6 +102,11 @@ Path discovery sources include:
 
 Imported files are copied into `data/incoming/input_doc` and become immediately available for translation.
 
+OneDrive picker UX includes:
+- Live folder filtering in the select panel.
+- Visible counters for filtered vs total detected folders.
+- Scrollable bounded list for better usability with large folder sets.
+
 ## UI and Localization
 
 - App UI supports Italian and English.
