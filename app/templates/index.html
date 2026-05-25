@@ -73,9 +73,22 @@
 
     <section class="panel panel-soft reveal-2{% if active_tab == 'settings' %} tab-hidden{% endif %}">
       <h2>{{ t.sec_onedrive_title }}</h2>
+      {% if onedrive_mode == 'delegated' %}
+        <div class="onedrive-auth-row">
+          {% if onedrive_connected %}
+            <p class="hint">{{ t.onedrive_connected_as }} {{ onedrive_user if onedrive_user else 'Microsoft account' }}</p>
+            <a class="tab-link" href="/auth/microsoft/logout?lang={{ lang_code }}">{{ t.onedrive_disconnect }}</a>
+          {% else %}
+            <p class="hint">{{ t.onedrive_not_connected }}</p>
+            <a class="tab-link" href="/auth/microsoft/login?lang={{ lang_code }}">{{ t.onedrive_connect }}</a>
+          {% endif %}
+        </div>
+      {% endif %}
       <form action="/import-onedrive" method="post">
         <input type="hidden" name="lang" value="{{ lang_code }}" />
         {% if onedrive_mode == 'graph' %}
+          <p class="hint">{{ t.onedrive_cloud_hint }}</p>
+        {% elif onedrive_mode == 'delegated' %}
           <p class="hint">{{ t.onedrive_cloud_hint }}</p>
         {% endif %}
         {% if onedrive_roots %}

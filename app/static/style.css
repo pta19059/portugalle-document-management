@@ -216,6 +216,14 @@ select:focus {
   gap: 0.35rem;
 }
 
+.onedrive-auth-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
 .onedrive-filter-label {
   font-size: 0.86rem;
   color: var(--ink-soft);

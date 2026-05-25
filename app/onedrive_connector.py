@@ -69,8 +69,15 @@ def _rt(lang: str | None, key: str, **kwargs: object) -> str:
 
 def get_onedrive_connector_mode() -> str:
     value = os.getenv("ONEDRIVE_CONNECTOR_MODE", "").strip().lower()
-    if value in {"local-sync", "graph"}:
+    if value in {"local-sync", "graph", "delegated"}:
         return value
+
+    delegated_ready = bool(
+        os.getenv("MS_OAUTH_CLIENT_ID", "").strip()
+        and os.getenv("MS_OAUTH_CLIENT_SECRET", "").strip()
+    )
+    if delegated_ready:
+        return "delegated"
 
     required = (
         os.getenv("ONEDRIVE_TENANT_ID", "").strip(),
@@ -81,6 +88,133 @@ def get_onedrive_connector_mode() -> str:
     if all(required):
         return "graph"
     return "local-sync"
+
+
+def _delegated_list_children(access_token: str, folder_path: str, lang: str | None) -> list[dict]:
+    encoded_path = quote(folder_path, safe="/")
+    if folder_path:
+        url = f"https://graph.microsoft.com/v1.0/me/drive/root:/{encoded_path}:/children"
+    else:
+        url = "https://graph.microsoft.com/v1.0/me/drive/root/children"
+
+    items: list[dict] = []
+    headers = {"Authorization": f"Bearer {access_token}"}
+    while url:
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+        except Exception as exc:  # noqa: BLE001
+            raise OneDriveImportError(_rt(lang, "graph_api_error", error=str(exc))) from exc
+
+        if response.status_code == 404:
+            raise OneDriveImportError(_rt(lang, "graph_folder_not_found"))
+        if response.status_code >= 400:
+            raise OneDriveImportError(_rt(lang, "graph_api_error", error=f"HTTP {response.status_code}"))
+
+        payload = response.json()
+        items.extend(payload.get("value", []))
+        url = payload.get("@odata.nextLink")
+
+    return items
+
+
+def discover_delegated_onedrive_roots() -> list[Path]:
+    return [Path("graph://me")]
+
+
+def discover_delegated_onedrive_folders(
+    access_token: str,
+    max_results: int = 120,
+    max_depth: int = 2,
+    lang: str | None = None,
+) -> list[Path]:
+    folders: list[str] = []
+    queue: list[tuple[str, int]] = [("", 0)]
+    seen: set[str] = set()
+
+    while queue and len(folders) < max_results:
+        current_path, depth = queue.pop(0)
+        for item in _delegated_list_children(access_token, current_path, lang):
+            if "folder" not in item:
+                continue
+            folder_name = str(item.get("name", "")).strip()
+            if not folder_name:
+                continue
+
+            child_path = f"{current_path}/{folder_name}" if current_path else folder_name
+            key = child_path.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            folders.append(child_path)
+            if len(folders) >= max_results:
+                break
+
+            if depth + 1 < max_depth:
+                queue.append((child_path, depth + 1))
+
+    return [Path(path) for path in sorted(folders, key=lambda p: p.lower())]
+
+
+def import_folder_from_onedrive_delegated(
+    access_token: str,
+    folder_path: str,
+    incoming_dir: Path,
+    recursive: bool,
+    lang: str = "it",
+) -> list[Path]:
+    selected_path = _normalize_folder_path(folder_path)
+    incoming_dir.mkdir(parents=True, exist_ok=True)
+
+    queue: list[tuple[str, str]] = [(selected_path, "")]
+    files_to_download: list[tuple[str, str]] = []
+
+    while queue:
+        api_path, relative_prefix = queue.pop(0)
+        children = _delegated_list_children(access_token, api_path, lang)
+
+        for item in children:
+            name = str(item.get("name", "")).strip()
+            if not name:
+                continue
+
+            relative_path = f"{relative_prefix}/{name}" if relative_prefix else name
+            if "folder" in item:
+                if recursive:
+                    child_api_path = f"{api_path}/{name}" if api_path else name
+                    queue.append((child_api_path, relative_path))
+                continue
+
+            if Path(name).suffix.lower() not in SUPPORTED_IMPORT_EXTENSIONS:
+                continue
+
+            item_id = str(item.get("id", "")).strip()
+            if not item_id:
+                continue
+            files_to_download.append((item_id, relative_path))
+
+    if not files_to_download:
+        raise OneDriveImportError(_rt(lang, "no_supported_files"))
+
+    imported: list[Path] = []
+    headers = {"Authorization": f"Bearer {access_token}"}
+    for item_id, relative_path in files_to_download:
+        safe_item_id = quote(item_id, safe="")
+        content_url = f"https://graph.microsoft.com/v1.0/me/drive/items/{safe_item_id}/content"
+        try:
+            response = requests.get(content_url, headers=headers, timeout=120)
+        except Exception as exc:  # noqa: BLE001
+            raise OneDriveImportError(_rt(lang, "graph_api_error", error=str(exc))) from exc
+
+        if response.status_code >= 400:
+            raise OneDriveImportError(_rt(lang, "graph_api_error", error=f"HTTP {response.status_code}"))
+
+        relative = Path(relative_path)
+        destination = incoming_dir / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(response.content)
+        imported.append(destination)
+
+    return imported
 
 
 def _graph_config() -> dict[str, str]:

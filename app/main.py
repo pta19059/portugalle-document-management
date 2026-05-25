@@ -1,20 +1,27 @@
 from __future__ import annotations
 
 from datetime import datetime
+import os
+import secrets
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+import requests
+from starlette.middleware.sessions import SessionMiddleware
 
 from .format_preserving_translation import translate_file_preserve_format
 from .onedrive_connector import (
     OneDriveImportError,
+    discover_delegated_onedrive_folders,
+    discover_delegated_onedrive_roots,
     discover_local_onedrive_folders,
     discover_local_onedrive_roots,
     get_onedrive_connector_mode,
+    import_folder_from_onedrive_delegated,
     import_folder_from_onedrive,
 )
 from .settings_store import (
@@ -37,6 +44,12 @@ for path in (DEFAULT_INCOMING_SUBDIR, PROCESSED_DIR):
     path.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Portugalle Document Management")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET_KEY", "change-me-in-production"),
+    same_site="lax",
+    https_only=bool(os.getenv("SESSION_COOKIE_SECURE", "0").strip() == "1"),
+)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
@@ -80,7 +93,11 @@ UI_TEXTS = {
         "onedrive_recursive_desc": "Se attivo, importa anche i file presenti nelle sottocartelle della cartella selezionata.",
         "onedrive_import": "Importa cartella selezionata",
         "onedrive_none": "Nessuna cartella OneDrive rilevata automaticamente. Inserisci il path manualmente.",
-        "onedrive_cloud_hint": "Modalita cloud attiva: imposta variabili GRAPH_* e usa percorsi cartella OneDrive (es. Documents/Contratti).",
+        "onedrive_cloud_hint": "Modalita cloud attiva: configura il connettore OneDrive nelle impostazioni ambiente e usa percorsi cartella (es. Documents/Contratti).",
+        "onedrive_connect": "Connetti OneDrive",
+        "onedrive_disconnect": "Disconnetti OneDrive",
+        "onedrive_connected_as": "Connesso come",
+        "onedrive_not_connected": "Non connesso a OneDrive cloud.",
         "sec_translate_title": "3) Traduce PT -> EN/IT",
         "source_lang": "Lingua sorgente",
         "queue_files": "File in coda",
@@ -162,7 +179,11 @@ UI_TEXTS = {
         "onedrive_recursive_desc": "If enabled, files from subfolders of the selected folder are imported too.",
         "onedrive_import": "Import selected folder",
         "onedrive_none": "No OneDrive folder was detected automatically. Enter the path manually.",
-        "onedrive_cloud_hint": "Cloud mode is active: set GRAPH_* app settings and use OneDrive folder paths (for example Documents/Contracts).",
+        "onedrive_cloud_hint": "Cloud mode is active: configure OneDrive connector app settings and use OneDrive folder paths (for example Documents/Contracts).",
+        "onedrive_connect": "Connect OneDrive",
+        "onedrive_disconnect": "Disconnect OneDrive",
+        "onedrive_connected_as": "Connected as",
+        "onedrive_not_connected": "Not connected to OneDrive cloud.",
         "sec_translate_title": "3) Translate PT -> EN/IT",
         "source_lang": "Source language",
         "queue_files": "Queued files",
@@ -232,6 +253,13 @@ RUNTIME_TEXTS = {
         "blob_url": "Blob connection string non valida: hai inserito un URL. Inserisci la connection string completa (DefaultEndpointsProtocol=...;AccountName=...;AccountKey=...;EndpointSuffix=...).",
         "blob_missing_parts": "Blob connection string non valida: devono essere presenti AccountName e AccountKey. Recuperala da Storage Account > Access keys > Connection string.",
         "settings_saved": "Impostazioni Azure Translator salvate",
+        "onedrive_connect_required": "Accedi a OneDrive prima di importare file cloud",
+        "onedrive_login_ok": "Login OneDrive completato",
+        "onedrive_logout_ok": "Logout OneDrive completato",
+        "oauth_config_missing": "Configurazione OAuth mancante: imposta MS_OAUTH_CLIENT_ID e MS_OAUTH_CLIENT_SECRET",
+        "oauth_state_invalid": "Stato OAuth non valido o scaduto",
+        "oauth_exchange_failed": "Scambio token OAuth fallito",
+        "oauth_error": "Errore OAuth: {error}",
     },
     "en": {
         "invalid_upload": "No valid file selected",
@@ -255,8 +283,52 @@ RUNTIME_TEXTS = {
         "blob_url": "Invalid Blob connection string: a URL was provided. Use the full connection string (DefaultEndpointsProtocol=...;AccountName=...;AccountKey=...;EndpointSuffix=...).",
         "blob_missing_parts": "Invalid Blob connection string: AccountName and AccountKey are required. Retrieve it from Storage Account > Access keys > Connection string.",
         "settings_saved": "Azure Translator settings saved",
+        "onedrive_connect_required": "Sign in to OneDrive before importing cloud files",
+        "onedrive_login_ok": "OneDrive login completed",
+        "onedrive_logout_ok": "OneDrive logout completed",
+        "oauth_config_missing": "OAuth configuration is missing: set MS_OAUTH_CLIENT_ID and MS_OAUTH_CLIENT_SECRET",
+        "oauth_state_invalid": "OAuth state is invalid or expired",
+        "oauth_exchange_failed": "OAuth token exchange failed",
+        "oauth_error": "OAuth error: {error}",
     },
 }
+
+
+def _oauth_client_id() -> str:
+    return os.getenv("MS_OAUTH_CLIENT_ID", "").strip()
+
+
+def _oauth_client_secret() -> str:
+    return os.getenv("MS_OAUTH_CLIENT_SECRET", "").strip()
+
+
+def _oauth_tenant() -> str:
+    value = os.getenv("MS_OAUTH_TENANT", "common").strip()
+    return value or "common"
+
+
+def _oauth_redirect_uri(request: Request) -> str:
+    explicit = os.getenv("MS_OAUTH_REDIRECT_URI", "").strip()
+    if explicit:
+        return explicit
+    base = str(request.base_url).rstrip("/")
+    return f"{base}/auth/microsoft/callback"
+
+
+def _oauth_scopes() -> str:
+    return os.getenv(
+        "MS_OAUTH_SCOPES",
+        "openid profile email offline_access Files.Read Files.Read.All User.Read",
+    ).strip()
+
+
+def _oauth_enabled() -> bool:
+    return bool(_oauth_client_id() and _oauth_client_secret())
+
+
+def _onedrive_session_token(request: Request) -> str:
+    token = str(request.session.get("onedrive_access_token", "")).strip()
+    return token
 
 
 def _list_incoming() -> list[Path]:
@@ -331,8 +403,26 @@ async def index(
     active_tab = _normalize_tab(tab)
     lang_code = _normalize_lang(lang)
     onedrive_mode = get_onedrive_connector_mode()
-    onedrive_roots = [str(path).replace('\\', '/') for path in discover_local_onedrive_roots()]
-    onedrive_folders = [str(path).replace('\\', '/') for path in discover_local_onedrive_folders()]
+    onedrive_token = _onedrive_session_token(request)
+    onedrive_user = str(request.session.get("onedrive_user", "")).strip()
+    onedrive_connected = bool(onedrive_token)
+
+    if onedrive_mode == "delegated" and onedrive_connected:
+        try:
+            onedrive_roots = [str(path).replace('\\', '/') for path in discover_delegated_onedrive_roots()]
+            onedrive_folders = [
+                str(path).replace('\\', '/')
+                for path in discover_delegated_onedrive_folders(onedrive_token, lang=lang_code)
+            ]
+        except Exception:
+            onedrive_roots = []
+            onedrive_folders = []
+    elif onedrive_mode == "delegated":
+        onedrive_roots = []
+        onedrive_folders = []
+    else:
+        onedrive_roots = [str(path).replace('\\', '/') for path in discover_local_onedrive_roots()]
+        onedrive_folders = [str(path).replace('\\', '/') for path in discover_local_onedrive_folders()]
 
     return templates.TemplateResponse(
         "index.html",
@@ -350,6 +440,9 @@ async def index(
             "onedrive_roots": onedrive_roots,
             "onedrive_folders": onedrive_folders,
             "onedrive_mode": onedrive_mode,
+            "onedrive_connected": onedrive_connected,
+            "onedrive_user": onedrive_user,
+            "oauth_enabled": _oauth_enabled(),
             "settings_locked": is_translator_settings_locked(),
             "translator_settings": {
                 "endpoint": saved_settings.get("endpoint", ""),
@@ -402,6 +495,7 @@ async def upload_local(files: list[UploadFile] = File(...), lang: str = Form("it
 
 @app.post("/import-onedrive")
 async def import_onedrive(
+    request: Request,
     client_id: str = Form("local-sync"),
     tenant_id: str = Form("common"),
     folder_path: str = Form(...),
@@ -409,20 +503,122 @@ async def import_onedrive(
     lang: str = Form("it"),
 ):
     try:
-        imported = import_folder_from_onedrive(
-            client_id=client_id,
-            tenant_id=tenant_id,
-            folder_path=folder_path,
-            incoming_dir=DEFAULT_INCOMING_SUBDIR,
-            recursive=recursive == "true",
-            lang=lang,
-        )
+        if get_onedrive_connector_mode() == "delegated":
+            token = _onedrive_session_token(request)
+            if not token:
+                return _redirect_home(error=_rt(lang, "onedrive_connect_required"), lang=lang)
+            imported = import_folder_from_onedrive_delegated(
+                access_token=token,
+                folder_path=folder_path,
+                incoming_dir=DEFAULT_INCOMING_SUBDIR,
+                recursive=recursive == "true",
+                lang=lang,
+            )
+        else:
+            imported = import_folder_from_onedrive(
+                client_id=client_id,
+                tenant_id=tenant_id,
+                folder_path=folder_path,
+                incoming_dir=DEFAULT_INCOMING_SUBDIR,
+                recursive=recursive == "true",
+                lang=lang,
+            )
     except OneDriveImportError as exc:
         return _redirect_home(error=str(exc), lang=lang)
     except Exception as exc:  # noqa: BLE001
         return _redirect_home(error=_rt(lang, "onedrive_import_error", error=str(exc)), lang=lang)
 
     return _redirect_home(message=_rt(lang, "onedrive_imported", count=len(imported)), lang=lang)
+
+
+@app.get("/auth/microsoft/login")
+async def microsoft_login(request: Request, lang: str = "it"):
+    if not _oauth_enabled():
+        return _redirect_home(error=_rt(lang, "oauth_config_missing"), lang=lang)
+
+    state = secrets.token_urlsafe(24)
+    request.session["oauth_state"] = state
+
+    params = {
+        "client_id": _oauth_client_id(),
+        "response_type": "code",
+        "redirect_uri": _oauth_redirect_uri(request),
+        "response_mode": "query",
+        "scope": _oauth_scopes(),
+        "state": state,
+        "prompt": "select_account",
+    }
+    auth_url = f"https://login.microsoftonline.com/{_oauth_tenant()}/oauth2/v2.0/authorize?{urlencode(params)}"
+    return RedirectResponse(url=auth_url, status_code=302)
+
+
+@app.get("/auth/microsoft/callback")
+async def microsoft_callback(
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    lang: str = "it",
+):
+    if error:
+        return _redirect_home(error=_rt(lang, "oauth_error", error=error), lang=lang)
+
+    expected_state = str(request.session.get("oauth_state", "")).strip()
+    if not state or not expected_state or state != expected_state:
+        return _redirect_home(error=_rt(lang, "oauth_state_invalid"), lang=lang)
+
+    if not code:
+        return _redirect_home(error=_rt(lang, "oauth_exchange_failed"), lang=lang)
+
+    token_url = f"https://login.microsoftonline.com/{_oauth_tenant()}/oauth2/v2.0/token"
+    payload = {
+        "grant_type": "authorization_code",
+        "client_id": _oauth_client_id(),
+        "client_secret": _oauth_client_secret(),
+        "code": code,
+        "redirect_uri": _oauth_redirect_uri(request),
+        "scope": _oauth_scopes(),
+    }
+
+    try:
+        response = requests.post(token_url, data=payload, timeout=30)
+    except Exception:
+        return _redirect_home(error=_rt(lang, "oauth_exchange_failed"), lang=lang)
+
+    if response.status_code >= 400:
+        return _redirect_home(error=_rt(lang, "oauth_exchange_failed"), lang=lang)
+
+    token_payload = response.json()
+    access_token = str(token_payload.get("access_token", "")).strip()
+    if not access_token:
+        return _redirect_home(error=_rt(lang, "oauth_exchange_failed"), lang=lang)
+
+    request.session["onedrive_access_token"] = access_token
+
+    try:
+        me_response = requests.get(
+            "https://graph.microsoft.com/v1.0/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=15,
+        )
+        if me_response.status_code < 400:
+            me = me_response.json()
+            request.session["onedrive_user"] = str(
+                me.get("userPrincipalName") or me.get("mail") or me.get("displayName") or ""
+            )
+    except Exception:
+        request.session["onedrive_user"] = ""
+
+    request.session["oauth_state"] = ""
+    return _redirect_home(message=_rt(lang, "onedrive_login_ok"), lang=lang)
+
+
+@app.get("/auth/microsoft/logout")
+async def microsoft_logout(request: Request, lang: str = "it"):
+    request.session.pop("onedrive_access_token", None)
+    request.session.pop("onedrive_user", None)
+    request.session.pop("oauth_state", None)
+    return _redirect_home(message=_rt(lang, "onedrive_logout_ok"), lang=lang)
 
 
 @app.post("/process")

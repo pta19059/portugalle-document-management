@@ -91,6 +91,11 @@ http://127.0.0.1:8000
 | `ONEDRIVE_CLIENT_ID` | OneDrive cloud | App registration client ID with Microsoft Graph permissions. |
 | `ONEDRIVE_CLIENT_SECRET` | OneDrive cloud | Client secret for app registration (store in App Service settings / Key Vault). |
 | `ONEDRIVE_USER_ID` | OneDrive cloud | Target OneDrive owner (UPN or Entra object ID). |
+| `MS_OAUTH_CLIENT_ID` | OneDrive delegated | OAuth client ID for Microsoft sign-in (solution for personal account login). |
+| `MS_OAUTH_CLIENT_SECRET` | OneDrive delegated | OAuth client secret for authorization code flow. |
+| `MS_OAUTH_TENANT` | OneDrive delegated | OAuth tenant segment (`common` recommended for public login). |
+| `MS_OAUTH_REDIRECT_URI` | OneDrive delegated | Optional explicit callback URL. If missing, app builds `/auth/microsoft/callback` from current host. |
+| `MS_OAUTH_SCOPES` | OneDrive delegated | Optional scope override (default includes `Files.Read`). |
 
 ## OneDrive Import (Local Sync Mode)
 
@@ -123,6 +128,21 @@ When the app is hosted on App Service, local synced folders are not available. E
 Notes:
 - `local-sync` remains the recommended mode for developer workstation usage.
 - `graph` mode is recommended for App Service and any hosted/public deployment.
+
+## OneDrive Import (Delegated OAuth - Personal Accounts)
+
+Use this mode when the app must work with personal Microsoft accounts and interactive sign-in.
+
+1. Configure app settings:
+  - `ONEDRIVE_CONNECTOR_MODE=delegated`
+  - `MS_OAUTH_CLIENT_ID=<oauth-client-id>`
+  - `MS_OAUTH_CLIENT_SECRET=<oauth-client-secret>`
+  - `MS_OAUTH_TENANT=common`
+2. Configure redirect URI in App Registration:
+  - `https://<your-app>.azurewebsites.net/auth/microsoft/callback`
+3. Sign in from the app UI using **Connect OneDrive**.
+
+Delegated mode is the recommended option for public SaaS scenarios where each user accesses their own OneDrive.
 
 OneDrive picker UX includes:
 - Live folder filtering in the select panel.
