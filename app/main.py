@@ -46,7 +46,7 @@ for path in (DEFAULT_INCOMING_SUBDIR, PROCESSED_DIR):
 app = FastAPI(title="Portugalle Document Management")
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SESSION_SECRET_KEY", "change-me-in-production"),
+    secret_key=os.getenv("SESSION_SECRET_KEY", "").strip() or secrets.token_hex(32),
     same_site="lax",
     https_only=bool(os.getenv("SESSION_COOKIE_SECURE", "0").strip() == "1"),
 )
