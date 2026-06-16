@@ -11,7 +11,7 @@ The application is designed for practical day-to-day operations:
 
 ## Screenshot
 
-![Portugalle Document Management - main screen](docs/screenshot-main.png)
+![Portugalle Document Management - main screen](docs/screenshot-main-en.png)
 
 ## Key Capabilities
 
