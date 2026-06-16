@@ -9,6 +9,10 @@ The application is designed for practical day-to-day operations:
 - Azure batch + Blob workflow for PDF files.
 - Bilingual UI and runtime messages (Italian/English).
 
+## Screenshot
+
+![Portugalle Document Management - main screen](docs/screenshot-main.png)
+
 ## Key Capabilities
 
 - Upload files directly from the local machine.
