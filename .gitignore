@@ -15,6 +15,10 @@ __pycache__/
 venv/
 
 # Local runtime and secrets
+.env
+*.env
+*.pem
+*.key
 data/incoming/
 data/processed/
 data/settings/translator_settings.json
